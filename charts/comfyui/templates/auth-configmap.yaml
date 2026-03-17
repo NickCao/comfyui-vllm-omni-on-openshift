@@ -12,7 +12,7 @@ data:
 
         location = /healthz {
             auth_basic off;
-            return 200 "ok";
+            proxy_pass http://localhost:8188/;
         }
 
         auth_basic "ComfyUI";
