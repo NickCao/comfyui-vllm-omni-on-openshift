@@ -1,0 +1,58 @@
+{
+  "last_node_id": 2,
+  "last_link_id": 1,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "VLLMTextToImage",
+      "pos": [200, 200],
+      "size": [400, 400],
+      "outputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "links": [1]
+        }
+      ],
+      "widgets_values": [
+        "A red panda sitting on a tree branch in a bamboo forest, soft natural lighting",
+        "Z-Image-Turbo (Speed)",
+        "",
+        512,
+        512,
+        -1,
+        -1.0,
+        -1.0,
+        1,
+        42,
+        "disabled",
+        "disabled",
+        "http://vllm-omni-z-image-turbo-predictor.ncao.svc.cluster.local:8080",
+        "/v1/images/generations"
+      ]
+    },
+    {
+      "id": 2,
+      "type": "SaveImage",
+      "pos": [700, 200],
+      "size": [400, 400],
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 1
+        }
+      ],
+      "widgets_values": [
+        "vllm-omni-test"
+      ]
+    }
+  ],
+  "links": [
+    [1, 1, 0, 2, 0, "IMAGE"]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}
