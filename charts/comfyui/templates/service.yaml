@@ -9,7 +9,7 @@ spec:
   ports:
     - name: http
       port: 8188
-      targetPort: http
+      targetPort: {{ if .Values.auth.enabled }}auth{{ else }}http{{ end }}
       protocol: TCP
   selector:
     {{- include "comfyui.selectorLabels" . | nindent 4 }}

@@ -119,6 +119,24 @@
         }
       }
     },
+    "auth": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable basic auth via nginx sidecar."
+        },
+        "username": {
+          "type": "string",
+          "description": "Username for basic auth."
+        },
+        "password": {
+          "type": "string",
+          "description": "Password for basic auth."
+        }
+      }
+    },
     "extraEnv": {
       "type": "array",
       "items": {

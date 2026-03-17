@@ -66,7 +66,24 @@ spec:
             - name: data
               mountPath: /root
           {{- end }}
-      {{- if or .Values.persistence.enabled .Values.customNodes.vllmOmni.enabled }}
+        {{- if .Values.auth.enabled }}
+        - name: nginx
+          image: nginx:alpine
+          ports:
+            - name: auth
+              containerPort: 8080
+              protocol: TCP
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d
+            - name: auth-htpasswd
+              mountPath: /etc/nginx/auth
+          readinessProbe:
+            httpGet:
+              path: /
+              port: auth
+            periodSeconds: 10
+        {{- end }}
       volumes:
         {{- if .Values.persistence.enabled }}
         - name: data
@@ -79,4 +96,14 @@ spec:
             name: {{ include "comfyui.fullname" . }}-scripts
             defaultMode: 0755
         {{- end }}
-      {{- end }}
+        {{- if .Values.auth.enabled }}
+        - name: nginx-config
+          configMap:
+            name: {{ include "comfyui.fullname" . }}-nginx
+        - name: auth-htpasswd
+          secret:
+            secretName: {{ include "comfyui.fullname" . }}-auth
+            items:
+              - key: htpasswd
+                path: htpasswd
+        {{- end }}

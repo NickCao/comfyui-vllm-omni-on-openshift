@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import { promisify } from "node:util";
 import { config } from "../config.js";
 
@@ -28,6 +29,7 @@ export interface Instance {
   status: string;
   updated: string;
   routeUrl: string;
+  password: string;
   pods: PodStatus[];
 }
 
@@ -82,6 +84,19 @@ async function getPodStatuses(releaseName: string): Promise<PodStatus[]> {
   }
 }
 
+async function getPassword(releaseName: string): Promise<string> {
+  try {
+    const { stdout } = await exec("kubectl", [
+      "get", "secret", `${releaseName}-auth`,
+      "--namespace", config.helm.namespace,
+      "-o", "jsonpath={.data.password}",
+    ]);
+    return stdout ? Buffer.from(stdout, "base64").toString() : "";
+  } catch {
+    return "";
+  }
+}
+
 async function getRouteUrl(releaseName: string): Promise<string> {
   try {
     const { stdout } = await exec("kubectl", [
@@ -109,9 +124,10 @@ export async function listInstances(): Promise<Instance[]> {
   const releases: HelmRelease[] = JSON.parse(output);
   return Promise.all(
     releases.map(async (r) => {
-      const [routeUrl, pods] = await Promise.all([
+      const [routeUrl, pods, password] = await Promise.all([
         getRouteUrl(r.name),
         getPodStatuses(r.name),
+        getPassword(r.name),
       ]);
       return {
         name: r.name,
@@ -119,6 +135,7 @@ export async function listInstances(): Promise<Instance[]> {
         status: r.status,
         updated: r.updated,
         routeUrl,
+        password,
         pods,
       };
     })
@@ -127,6 +144,7 @@ export async function listInstances(): Promise<Instance[]> {
 
 export async function createInstance(username: string, suffix?: string): Promise<Instance> {
   const name = releaseName(username, suffix);
+  const password = randomBytes(16).toString("hex");
 
   await helm(
     "install",
@@ -134,6 +152,8 @@ export async function createInstance(username: string, suffix?: string): Promise
     config.helm.chartPath,
     "--namespace",
     config.helm.namespace,
+    "--set",
+    `auth.password=${password}`,
   );
 
   const [routeUrl, pods] = await Promise.all([
@@ -146,6 +166,7 @@ export async function createInstance(username: string, suffix?: string): Promise
     status: "deployed",
     updated: new Date().toISOString(),
     routeUrl,
+    password,
     pods,
   };
 }

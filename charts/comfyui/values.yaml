@@ -43,5 +43,14 @@ resources:
     cpu: "2"
     memory: 4Gi
 
+# Basic auth via nginx sidecar.
+auth:
+  enabled: true
+  # Username for basic auth.
+  username: comfyui
+  # Password for basic auth. Generate a random one if deploying manually.
+  # The portal generates this automatically.
+  password: ""
+
 # Additional environment variables.
 extraEnv: []

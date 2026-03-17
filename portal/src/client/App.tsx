@@ -20,6 +20,7 @@ interface Instance {
   status: string;
   updated: string;
   routeUrl: string;
+  password: string;
   pods: PodStatus[];
 }
 
@@ -238,6 +239,11 @@ export function App() {
                       <a href={inst.routeUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline break-all">
                         {inst.routeUrl}
                       </a>
+                    )}
+                    {inst.password && (
+                      <p className="mt-1 text-xs text-gray-400">
+                        Password: <code className="rounded bg-gray-100 px-1.5 py-0.5 text-gray-600 select-all">{inst.password}</code>
+                      </p>
                     )}
                   </div>
                   <div className="flex items-center gap-2">

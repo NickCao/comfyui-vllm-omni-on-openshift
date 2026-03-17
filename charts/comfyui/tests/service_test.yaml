@@ -16,7 +16,19 @@ tests:
           path: spec.type
           value: ClusterIP
 
-  - it: should expose port 8188
+  - it: should target auth port when auth is enabled
+    asserts:
+      - contains:
+          path: spec.ports
+          content:
+            name: http
+            port: 8188
+            targetPort: auth
+            protocol: TCP
+
+  - it: should target http port when auth is disabled
+    set:
+      auth.enabled: false
     asserts:
       - contains:
           path: spec.ports
