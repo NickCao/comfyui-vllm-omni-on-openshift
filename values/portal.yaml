@@ -1,0 +1,11 @@
+# Per-deployment overrides for the portal chart.
+# At minimum, set github credentials and sessionSecret.
+#
+# Examples:
+#   github:
+#     clientID: Ov23li...
+#     clientSecret: abc123...
+#     callbackURL: https://portal.apps.example.com/auth/github/callback
+#   sessionSecret: a-random-secret-string
+#   helm:
+#     vllmOmniUrl: http://vllm-omni-z-image-turbo-predictor.ncao.svc.cluster.local:8080

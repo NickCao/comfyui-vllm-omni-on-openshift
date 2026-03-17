@@ -1,0 +1,36 @@
+image:
+  repository: registry.example.com/comfyui-portal
+  tag: latest
+  pullPolicy: IfNotPresent
+
+replicas: 1
+
+# GitHub OAuth2 credentials.
+github:
+  clientID: ""
+  clientSecret: ""
+  callbackURL: ""
+
+# Session secret for express-session.
+sessionSecret: ""
+
+# Helm configuration for managing ComfyUI instances.
+helm:
+  chartPath: /app/charts/comfyui
+  releasePrefix: comfyui-
+  vllmOmniUrl: ""
+
+# OpenShift Route.
+route:
+  enabled: true
+  host: ""
+  tls:
+    termination: edge
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi

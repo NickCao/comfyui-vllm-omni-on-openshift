@@ -4,3 +4,9 @@ releases:
     chart: ./charts/vllm-omni
     values:
       - values/vllm-omni.yaml
+
+  - name: portal
+    namespace: comfyui-vllm-omni
+    chart: ./charts/portal
+    values:
+      - values/portal.yaml

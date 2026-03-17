@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "portal.fullname" . }}
+  labels:
+    {{- include "portal.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      {{- include "portal.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "portal.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "portal.fullname" . }}
+      containers:
+        - name: portal
+          image: {{ printf "%s:%s" .Values.image.repository .Values.image.tag | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          env:
+            - name: PORT
+              value: "3000"
+            - name: GITHUB_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "portal.fullname" . }}
+                  key: GITHUB_CLIENT_ID
+            - name: GITHUB_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "portal.fullname" . }}
+                  key: GITHUB_CLIENT_SECRET
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "portal.fullname" . }}
+                  key: SESSION_SECRET
+            - name: GITHUB_CALLBACK_URL
+              value: {{ .Values.github.callbackURL | quote }}
+            - name: COMFYUI_CHART_PATH
+              value: {{ .Values.helm.chartPath | quote }}
+            - name: COMFYUI_NAMESPACE
+              value: {{ .Release.Namespace }}
+            - name: VLLM_OMNI_URL
+              value: {{ .Values.helm.vllmOmniUrl | quote }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /auth/me
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /auth/me
+              port: http
+            periodSeconds: 30

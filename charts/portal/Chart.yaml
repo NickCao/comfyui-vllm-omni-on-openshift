@@ -1,0 +1,6 @@
+apiVersion: v2
+name: portal
+description: Self-service portal for managing ComfyUI instances on OpenShift
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
