@@ -4,9 +4,3 @@ releases:
     chart: ./charts/vllm-omni
     values:
       - values/vllm-omni.yaml
-
-  - name: comfyui
-    namespace: comfyui-vllm-omni
-    chart: ./charts/comfyui
-    values:
-      - values/comfyui.yaml
