@@ -151,6 +151,12 @@ podman push quay.io/your-org/comfyui-portal:latest
 | `allowedGithubUsers` | `""` | Comma-separated whitelist (empty = deny all) |
 | `helm.chartPath` | `/app/charts/comfyui` | Path to comfyui chart in container |
 
+## Known Limitations
+
+- **Model discovery cache does not auto-refresh.** The ComfyUI custom nodes query the K8s API for available InferenceService models once at startup and cache the result. If a new InferenceService is added after ComfyUI is already running, the model will not appear in the dropdown until the ComfyUI pod is restarted.
+
+- **Portal sessions are stored in-memory.** The Express session store is not backed by persistent storage. All user sessions are lost when the portal pod restarts (e.g. during a redeployment), requiring users to sign in again.
+
 ## Running Tests
 
 ```bash
