@@ -1,5 +1,5 @@
 releases:
-  - name: vllm-omni
+  - name: vllm-omni-z-image-turbo
     namespace: comfyui-vllm-omni
     chart: ./charts/vllm-omni
     values:
