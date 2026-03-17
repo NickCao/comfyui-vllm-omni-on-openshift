@@ -56,45 +56,13 @@ tests:
             name: VLLM_OMNI_URL
             value: "http://vllm-omni:8080"
 
-  - it: should mount emptyDir at /root for writable home
+  - it: should mount PVC at /root when persistence is enabled
     asserts:
       - contains:
           path: spec.template.spec.containers[0].volumeMounts
           content:
-            name: home
+            name: data
             mountPath: /root
-      - contains:
-          path: spec.template.spec.volumes
-          content:
-            name: home
-            emptyDir: {}
-
-  - it: should mount PVC subpaths for persistent directories
-    asserts:
-      - contains:
-          path: spec.template.spec.containers[0].volumeMounts
-          content:
-            name: data
-            mountPath: /root/ComfyUI/custom_nodes
-            subPath: custom_nodes
-      - contains:
-          path: spec.template.spec.containers[0].volumeMounts
-          content:
-            name: data
-            mountPath: /root/ComfyUI/output
-            subPath: output
-      - contains:
-          path: spec.template.spec.containers[0].volumeMounts
-          content:
-            name: data
-            mountPath: /root/ComfyUI/input
-            subPath: input
-      - contains:
-          path: spec.template.spec.containers[0].volumeMounts
-          content:
-            name: data
-            mountPath: /root/ComfyUI/user
-            subPath: user
 
   - it: should use init container to copy pre-start script when custom nodes enabled
     asserts:
@@ -104,7 +72,7 @@ tests:
       - contains:
           path: spec.template.spec.initContainers[0].volumeMounts
           content:
-            name: home
+            name: data
             mountPath: /root
       - contains:
           path: spec.template.spec.initContainers[0].volumeMounts
@@ -122,12 +90,10 @@ tests:
   - it: should not mount PVC when persistence is disabled
     set:
       persistence.enabled: false
+      customNodes.vllmOmni.enabled: false
     asserts:
-      - notContains:
+      - notExists:
           path: spec.template.spec.containers[0].volumeMounts
-          content:
-            name: data
-          any: true
 
   - it: should set replica count
     set:

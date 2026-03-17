@@ -6,6 +6,8 @@ metadata:
     {{- include "comfyui.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicas }}
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       {{- include "comfyui.selectorLabels" . | nindent 6 }}
@@ -17,10 +19,10 @@ spec:
       {{- if .Values.customNodes.vllmOmni.enabled }}
       initContainers:
         - name: setup-scripts
-          image: {{ printf "%s:%s" .Values.image.repository .Values.image.tag | quote }}
+          image: busybox
           command: ['sh', '-c', 'mkdir -p /root/user-scripts && cp /scripts/pre-start.sh /root/user-scripts/pre-start.sh']
           volumeMounts:
-            - name: home
+            - name: data
               mountPath: /root
             - name: pre-start
               mountPath: /scripts
@@ -62,26 +64,13 @@ spec:
               path: /
               port: http
             periodSeconds: 30
+          {{- if .Values.persistence.enabled }}
           volumeMounts:
-            - name: home
+            - name: data
               mountPath: /root
-            {{- if .Values.persistence.enabled }}
-            - name: data
-              mountPath: /root/ComfyUI/custom_nodes
-              subPath: custom_nodes
-            - name: data
-              mountPath: /root/ComfyUI/input
-              subPath: input
-            - name: data
-              mountPath: /root/ComfyUI/output
-              subPath: output
-            - name: data
-              mountPath: /root/ComfyUI/user
-              subPath: user
-            {{- end }}
+          {{- end }}
+      {{- if or .Values.persistence.enabled .Values.customNodes.vllmOmni.enabled }}
       volumes:
-        - name: home
-          emptyDir: {}
         {{- if .Values.persistence.enabled }}
         - name: data
           persistentVolumeClaim:
@@ -93,3 +82,4 @@ spec:
             name: {{ include "comfyui.fullname" . }}-scripts
             defaultMode: 0755
         {{- end }}
+      {{- end }}
