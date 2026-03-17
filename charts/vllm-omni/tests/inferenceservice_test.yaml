@@ -53,7 +53,7 @@ tests:
     asserts:
       - equal:
           path: spec.predictor.containers[0].image
-          value: "vllm/vllm-openai:latest"
+          value: "vllm/vllm-omni:v0.16.0"
 
   - it: should use a custom image when set
     set:
@@ -78,11 +78,11 @@ tests:
           path: spec.predictor.containers[0].args
           content: "my-org/my-model"
 
-  - it: should include --omni and --port 8080 in args
+  - it: should include --model and --port 8080 in args
     asserts:
       - contains:
           path: spec.predictor.containers[0].args
-          content: "--omni"
+          content: "--model"
       - contains:
           path: spec.predictor.containers[0].args
           content: "8080"

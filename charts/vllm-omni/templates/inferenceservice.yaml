@@ -17,9 +17,8 @@ spec:
         image: {{ printf "%s:%s" .Values.image.repository .Values.image.tag | quote }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         args:
-          - serve
+          - --model
           - {{ .Values.model.name | quote }}
-          - --omni
           - --port
           - "8080"
           {{- range .Values.model.extraArgs }}

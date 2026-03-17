@@ -20,7 +20,7 @@
         "repository": {
           "type": "string",
           "minLength": 1,
-          "description": "Image repository. Must have vllm-omni installed."
+          "description": "Image repository. Use vllm/vllm-omni for the official pre-built image."
         },
         "tag": {
           "type": "string",
@@ -50,7 +50,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Additional arguments passed to `vllm serve`."
+          "description": "Additional arguments passed to the vLLM-Omni entrypoint."
         }
       }
     },

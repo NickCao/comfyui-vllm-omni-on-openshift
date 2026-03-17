@@ -1,14 +1,14 @@
 # Container image for the vLLM-Omni server.
-# Must have vllm-omni installed (pip install vllm-omni).
+# Official pre-built images: https://hub.docker.com/r/vllm/vllm-omni/tags
 image:
-  repository: vllm/vllm-openai
-  tag: latest
+  repository: vllm/vllm-omni
+  tag: v0.16.0
   pullPolicy: IfNotPresent
 
 # Model to serve.
 model:
   name: Tongyi-MAI/Z-Image-Turbo
-  # Additional arguments passed to `vllm serve`.
+  # Additional arguments passed to the vLLM-Omni entrypoint.
   extraArgs: []
 
 # Resource requests and limits for the inference container.
