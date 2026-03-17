@@ -14,6 +14,10 @@ github:
 # Session secret for express-session.
 sessionSecret: ""
 
+# Comma-separated list of GitHub usernames allowed to use the portal.
+# Empty string means all authenticated users are allowed.
+allowedGithubUsers: ""
+
 # Helm configuration for managing ComfyUI instances.
 helm:
   chartPath: /app/charts/comfyui

@@ -41,6 +41,8 @@ spec:
                 secretKeyRef:
                   name: {{ include "portal.fullname" . }}
                   key: SESSION_SECRET
+            - name: ALLOWED_GITHUB_USERS
+              value: {{ .Values.allowedGithubUsers | quote }}
             - name: GITHUB_CALLBACK_URL
               value: {{ .Values.github.callbackURL | quote }}
             - name: COMFYUI_CHART_PATH
