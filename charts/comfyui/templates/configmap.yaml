@@ -8,20 +8,23 @@ metadata:
 data:
   pre-start.sh: |
     #!/bin/bash
+    set -e
     CUSTOM_NODES_DIR="/root/ComfyUI/custom_nodes/ComfyUI-vLLM-Omni"
-    if [ ! -d "$CUSTOM_NODES_DIR" ]; then
-        echo "Installing official vLLM-Omni custom nodes..."
-        TMPDIR=$(mktemp -d)
-        git clone --depth 1 --filter=blob:none --sparse {{ .Values.customNodes.vllmOmni.repository | quote }} "$TMPDIR"
-        cd "$TMPDIR" && git sparse-checkout set {{ .Values.customNodes.vllmOmni.path | quote }}
-        mv "$TMPDIR"/{{ .Values.customNodes.vllmOmni.path | quote }} "$CUSTOM_NODES_DIR"
-        rm -rf "$TMPDIR"
 
-        echo "Applying K8s discovery patch..."
-        TMPDIR=$(mktemp -d)
-        git clone --depth 1 --filter=blob:none --sparse {{ .Values.customNodes.vllmOmni.patchRepository | quote }} "$TMPDIR"
-        cd "$TMPDIR" && git sparse-checkout set {{ .Values.customNodes.vllmOmni.patchPath | quote }}
-        cp -r "$TMPDIR"/{{ .Values.customNodes.vllmOmni.patchPath | quote }}/* "$CUSTOM_NODES_DIR/comfyui_vllm_omni/"
-        rm -rf "$TMPDIR"
-    fi
+    echo "Installing official vLLM-Omni custom nodes..."
+    rm -rf "$CUSTOM_NODES_DIR"
+    TMPDIR=$(mktemp -d)
+    git clone --depth 1 --filter=blob:none --sparse {{ .Values.customNodes.vllmOmni.repository | quote }} "$TMPDIR"
+    cd "$TMPDIR" && git sparse-checkout set {{ .Values.customNodes.vllmOmni.path | quote }}
+    mv "$TMPDIR"/{{ .Values.customNodes.vllmOmni.path | quote }} "$CUSTOM_NODES_DIR"
+    rm -rf "$TMPDIR"
+
+    echo "Applying K8s discovery patch..."
+    TMPDIR=$(mktemp -d)
+    git clone --depth 1 --filter=blob:none --sparse {{ .Values.customNodes.vllmOmni.patchRepository | quote }} "$TMPDIR"
+    cd "$TMPDIR" && git sparse-checkout set {{ .Values.customNodes.vllmOmni.patchPath | quote }}
+    cp -r "$TMPDIR"/{{ .Values.customNodes.vllmOmni.patchPath | quote }}/* "$CUSTOM_NODES_DIR/comfyui_vllm_omni/"
+    rm -rf "$TMPDIR"
+
+    echo "vLLM-Omni custom nodes installed successfully."
 {{- end }}
