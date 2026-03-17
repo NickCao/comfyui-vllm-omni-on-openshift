@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { spawn } from "node:child_process";
 import { requireAuth } from "../middleware/auth.js";
 import * as helm from "../services/helm.js";
 import { config } from "../config.js";
@@ -49,6 +50,50 @@ router.delete("/instances/:name", async (req, res) => {
     const message = err instanceof Error ? err.message : String(err);
     res.status(500).json({ error: message });
   }
+});
+
+router.get("/instances/:name/logs", (req, res) => {
+  const name = req.params.name;
+  if (!RELEASE_NAME_RE.test(name) || !name.startsWith(config.helm.releasePrefix)) {
+    res.status(400).json({ error: "Invalid instance name" });
+    return;
+  }
+
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+  });
+
+  const proc = spawn("kubectl", [
+    "logs",
+    "-f",
+    "--tail=200",
+    "-l", `app.kubernetes.io/instance=${name}`,
+    "-c", "comfyui",
+    "--namespace", config.helm.namespace,
+  ]);
+
+  proc.stdout.on("data", (chunk: Buffer) => {
+    for (const line of chunk.toString().split("\n")) {
+      if (line) res.write(`data: ${line}\n\n`);
+    }
+  });
+
+  proc.stderr.on("data", (chunk: Buffer) => {
+    for (const line of chunk.toString().split("\n")) {
+      if (line) res.write(`data: [stderr] ${line}\n\n`);
+    }
+  });
+
+  proc.on("close", () => {
+    res.write("event: close\ndata: stream ended\n\n");
+    res.end();
+  });
+
+  req.on("close", () => {
+    proc.kill();
+  });
 });
 
 export default router;

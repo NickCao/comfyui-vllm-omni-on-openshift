@@ -53,6 +53,36 @@ function PodBadge({ pod }: { pod: PodStatus }) {
   );
 }
 
+function LogViewer({ name }: { name: string }) {
+  const [lines, setLines] = useState<string[]>([]);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const es = new EventSource(`/api/instances/${name}/logs`);
+    es.onmessage = (e) => {
+      setLines((prev) => {
+        const next = [...prev, e.data];
+        return next.length > 1000 ? next.slice(-1000) : next;
+      });
+    };
+    es.addEventListener("close", () => es.close());
+    return () => es.close();
+  }, [name]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [lines]);
+
+  return (
+    <div className="border-t border-gray-100 bg-gray-950 rounded-b-xl max-h-80 overflow-y-auto">
+      <pre className="px-4 py-3 text-xs leading-5 text-gray-300 font-mono whitespace-pre-wrap break-all">
+        {lines.length === 0 ? <span className="text-gray-500">Waiting for logs...</span> : lines.join("\n")}
+        <div ref={bottomRef} />
+      </pre>
+    </div>
+  );
+}
+
 export function App() {
   const [user, setUser] = useState<User | null>(null);
   const [instances, setInstances] = useState<Instance[]>([]);
@@ -60,6 +90,7 @@ export function App() {
   const [creating, setCreating] = useState(false);
   const [instanceName, setInstanceName] = useState("");
   const [error, setError] = useState("");
+  const [logsOpen, setLogsOpen] = useState<Record<string, boolean>>({});
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -210,6 +241,12 @@ export function App() {
                     )}
                   </div>
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setLogsOpen((prev) => ({ ...prev, [inst.name]: !prev[inst.name] }))}
+                      className={`rounded-md px-3 py-1.5 text-sm font-medium ring-1 transition-colors ${logsOpen[inst.name] ? "bg-gray-900 text-white ring-gray-900" : "text-gray-700 ring-gray-300 hover:bg-gray-50"}`}
+                    >
+                      Logs
+                    </button>
                     {inst.routeUrl && (
                       <a
                         href={inst.routeUrl}
@@ -237,6 +274,7 @@ export function App() {
                     </div>
                   </div>
                 )}
+                {logsOpen[inst.name] && <LogViewer name={inst.name} />}
               </div>
             ))
           )}
