@@ -1,0 +1,130 @@
+suite: Deployment
+templates:
+  - templates/deployment.yaml
+
+tests:
+  - it: should render a Deployment
+    asserts:
+      - isKind:
+          of: Deployment
+      - isAPIVersion:
+          of: apps/v1
+
+  - it: should use the correct name
+    release:
+      name: my-release
+    asserts:
+      - equal:
+          path: metadata.name
+          value: my-release-portal
+
+  - it: should use the default image
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: "ghcr.io/nickcao/comfyui-portal:latest"
+
+  - it: should use a custom image
+    set:
+      image.repository: ghcr.io/nickcao/comfyui-portal
+      image.tag: v1.0.0
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: "ghcr.io/nickcao/comfyui-portal:v1.0.0"
+
+  - it: should expose port 3000
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].ports[0].containerPort
+          value: 3000
+
+  - it: should set GitHub OAuth env vars from secret
+    release:
+      name: my-release
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: GITHUB_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                name: my-release-portal
+                key: GITHUB_CLIENT_ID
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: GITHUB_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: my-release-portal
+                key: GITHUB_CLIENT_SECRET
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SESSION_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: my-release-portal
+                key: SESSION_SECRET
+
+  - it: should set callback URL and allowed users
+    set:
+      github.callbackURL: https://portal.example.com/auth/github/callback
+      allowedGithubUsers: "alice,bob"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: GITHUB_CALLBACK_URL
+            value: "https://portal.example.com/auth/github/callback"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ALLOWED_GITHUB_USERS
+            value: "alice,bob"
+
+  - it: should set Helm config env vars
+    set:
+      helm.chartPath: /custom/path
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: COMFYUI_CHART_PATH
+            value: "/custom/path"
+
+  - it: should set COMFYUI_NAMESPACE to release namespace
+    release:
+      namespace: my-namespace
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: COMFYUI_NAMESPACE
+            value: my-namespace
+
+  - it: should use the portal service account
+    release:
+      name: my-release
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: my-release-portal
+
+  - it: should configure health probes on /healthz
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /healthz
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.path
+          value: /healthz
+
+  - it: should set replica count
+    set:
+      replicas: 3
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 3

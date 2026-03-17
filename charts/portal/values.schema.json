@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "nameOverride": {
+      "type": "string"
+    },
+    "fullnameOverride": {
+      "type": "string"
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "tag"],
+      "properties": {
+        "repository": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tag": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pullPolicy": {
+          "type": "string",
+          "enum": ["Always", "IfNotPresent", "Never"]
+        }
+      }
+    },
+    "replicas": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "github": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "clientID": {
+          "type": "string",
+          "description": "GitHub OAuth App client ID."
+        },
+        "clientSecret": {
+          "type": "string",
+          "description": "GitHub OAuth App client secret."
+        },
+        "callbackURL": {
+          "type": "string",
+          "description": "OAuth callback URL."
+        }
+      }
+    },
+    "sessionSecret": {
+      "type": "string",
+      "description": "Secret for signing express-session cookies."
+    },
+    "allowedGithubUsers": {
+      "type": "string",
+      "description": "Comma-separated GitHub usernames. Empty means no users allowed."
+    },
+    "helm": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "chartPath": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Path to the comfyui chart inside the container."
+        },
+        "releasePrefix": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Prefix for ComfyUI Helm release names."
+        }
+      }
+    },
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "host": {
+          "type": "string"
+        },
+        "tls": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "termination": {
+              "type": "string",
+              "enum": ["edge", "passthrough", "reencrypt"]
+            }
+          }
+        }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requests": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

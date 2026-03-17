@@ -1,0 +1,27 @@
+suite: Service
+templates:
+  - templates/service.yaml
+
+tests:
+  - it: should render a Service
+    asserts:
+      - isKind:
+          of: Service
+      - isAPIVersion:
+          of: v1
+
+  - it: should use ClusterIP type
+    asserts:
+      - equal:
+          path: spec.type
+          value: ClusterIP
+
+  - it: should expose port 3000
+    asserts:
+      - contains:
+          path: spec.ports
+          content:
+            name: http
+            port: 3000
+            targetPort: http
+            protocol: TCP

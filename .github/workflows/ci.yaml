@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  helm-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Install helm-unittest
+        run: helm plugin install https://github.com/helm-unittest/helm-unittest.git
+
+      - name: Run vllm-omni chart tests
+        run: helm unittest charts/vllm-omni/
+
+      - name: Run comfyui chart tests
+        run: helm unittest charts/comfyui/
+
+      - name: Run portal chart tests
+        run: helm unittest charts/portal/
+
+  portal-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: portal/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: portal
+
+      - name: Type-check
+        run: npx tsc --noEmit
+        working-directory: portal
+
+      - name: Build frontend
+        run: npx vite build
+        working-directory: portal
+
+  portal-image:
+    runs-on: ubuntu-latest
+    needs: [helm-tests, portal-typecheck]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: portal/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/comfyui-portal:latest
+            ghcr.io/${{ github.repository_owner }}/comfyui-portal:${{ github.sha }}

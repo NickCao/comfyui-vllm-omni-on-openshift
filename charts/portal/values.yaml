@@ -1,5 +1,5 @@
 image:
-  repository: registry.example.com/comfyui-portal
+  repository: ghcr.io/nickcao/comfyui-portal
   tag: latest
   pullPolicy: Always
 
