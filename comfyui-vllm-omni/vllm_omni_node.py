@@ -222,8 +222,7 @@ class VLLMTextToImage:
             seed: Random seed (0 = random)
             vae_use_slicing: Enable VAE slicing for memory optimization
             vae_use_tiling: Enable VAE tiling for large images
-            server_base_url: Base URL of vLLM-Omni server (e.g., http://localhost:8000)
-            endpoint_path: API endpoint path (default: /v1/images/generations)
+            model: Name of the vLLM-Omni model (resolved to a service URL via K8s discovery)
 
         Returns:
             Tuple containing a single tensor with shape (n, height, width, 4)
@@ -470,8 +469,7 @@ class VLLMImageEdit:
             true_cfg_scale: True CFG scale
             n: Number of variations to generate
             seed: Random seed
-            server_base_url: Base URL of vLLM-Omni server
-            endpoint_path: API endpoint path
+            model: Name of the vLLM-Omni model (resolved to a service URL via K8s discovery)
 
         Returns:
             Tuple containing a single tensor with shape (n, height, width, channels)

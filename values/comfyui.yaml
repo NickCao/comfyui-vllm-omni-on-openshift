@@ -2,7 +2,6 @@
 # Edit this file to configure the deployment for your cluster.
 #
 # Examples:
-#   vllmOmniUrl: http://vllm-omni-z-image-turbo-predictor.ncao.svc.cluster.local
 #   persistence:
 #     size: 50Gi
 #   route:

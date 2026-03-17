@@ -125,11 +125,6 @@ export async function listInstances(): Promise<Instance[]> {
   );
 }
 
-export async function getInstance(username: string): Promise<Instance | null> {
-  const instances = await listInstances();
-  return instances.find((i) => i.username === username) ?? null;
-}
-
 export async function createInstance(username: string, suffix?: string): Promise<Instance> {
   const name = releaseName(username, suffix);
 
