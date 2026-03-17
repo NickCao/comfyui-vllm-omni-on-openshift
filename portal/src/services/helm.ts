@@ -22,13 +22,27 @@ export interface Instance {
   routeUrl: string;
 }
 
-function releaseName(username: string): string {
-  return `${config.helm.releasePrefix}${username.toLowerCase()}`;
+function releaseName(username: string, suffix?: string): string {
+  const base = `${config.helm.releasePrefix}${username.toLowerCase()}`;
+  return suffix ? `${base}-${suffix}` : base;
 }
 
 async function helm(...args: string[]): Promise<string> {
   const { stdout } = await exec("helm", args);
   return stdout;
+}
+
+async function getRouteUrl(releaseName: string): Promise<string> {
+  try {
+    const { stdout } = await exec("kubectl", [
+      "get", "route", releaseName,
+      "--namespace", config.helm.namespace,
+      "-o", "jsonpath={.spec.host}",
+    ]);
+    return stdout ? `https://${stdout}` : "";
+  } catch {
+    return "";
+  }
 }
 
 export async function listInstances(): Promise<Instance[]> {
@@ -43,13 +57,15 @@ export async function listInstances(): Promise<Instance[]> {
   );
 
   const releases: HelmRelease[] = JSON.parse(output);
-  return releases.map((r) => ({
-    name: r.name,
-    username: r.name.replace(config.helm.releasePrefix, ""),
-    status: r.status,
-    updated: r.updated,
-    routeUrl: "",
-  }));
+  return Promise.all(
+    releases.map(async (r) => ({
+      name: r.name,
+      username: r.name.replace(config.helm.releasePrefix, ""),
+      status: r.status,
+      updated: r.updated,
+      routeUrl: await getRouteUrl(r.name),
+    }))
+  );
 }
 
 export async function getInstance(username: string): Promise<Instance | null> {
@@ -57,8 +73,8 @@ export async function getInstance(username: string): Promise<Instance | null> {
   return instances.find((i) => i.username === username) ?? null;
 }
 
-export async function createInstance(username: string): Promise<Instance> {
-  const name = releaseName(username);
+export async function createInstance(username: string, suffix?: string): Promise<Instance> {
+  const name = releaseName(username, suffix);
 
   const setArgs: string[] = [];
   if (config.helm.defaultValues.vllmOmniUrl) {
@@ -79,11 +95,10 @@ export async function createInstance(username: string): Promise<Instance> {
     username,
     status: "deployed",
     updated: new Date().toISOString(),
-    routeUrl: "",
+    routeUrl: await getRouteUrl(name),
   };
 }
 
-export async function deleteInstance(username: string): Promise<void> {
-  const name = releaseName(username);
-  await helm("uninstall", name, "--namespace", config.helm.namespace);
+export async function deleteInstance(releaseName: string): Promise<void> {
+  await helm("uninstall", releaseName, "--namespace", config.helm.namespace);
 }

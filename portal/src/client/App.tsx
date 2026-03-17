@@ -34,6 +34,7 @@ export function App() {
   const [instances, setInstances] = useState<Instance[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [instanceName, setInstanceName] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -56,8 +57,15 @@ export function App() {
     setError("");
     setCreating(true);
     try {
-      const res = await fetch("/api/instances", { method: "POST" });
+      const body: Record<string, string> = {};
+      if (instanceName.trim()) body.name = instanceName.trim();
+      const res = await fetch("/api/instances", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
       if (res.ok) {
+        setInstanceName("");
         refreshInstances();
       } else {
         const data = await res.json();
@@ -68,9 +76,9 @@ export function App() {
     }
   }
 
-  async function deleteInstance(username: string) {
+  async function deleteInstance(name: string) {
     setError("");
-    const res = await fetch(`/api/instances/${username}`, { method: "DELETE" });
+    const res = await fetch(`/api/instances/${name}`, { method: "DELETE" });
     if (res.ok) {
       refreshInstances();
     } else {
@@ -134,13 +142,25 @@ export function App() {
 
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide">Instances</h2>
-          <button
-            onClick={createInstance}
-            disabled={creating}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-gray-800 disabled:opacity-50 transition-colors"
+          <form
+            onSubmit={(e) => { e.preventDefault(); createInstance(); }}
+            className="flex items-center gap-2"
           >
-            {creating ? "Creating..." : "+ New Instance"}
-          </button>
+            <input
+              type="text"
+              value={instanceName}
+              onChange={(e) => setInstanceName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+              placeholder="optional suffix"
+              className="w-40 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-400 focus:outline-none"
+            />
+            <button
+              type="submit"
+              disabled={creating}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-gray-800 disabled:opacity-50 transition-colors"
+            >
+              {creating ? "Creating..." : "+ New Instance"}
+            </button>
+          </form>
         </div>
 
         <div className="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5">
@@ -170,7 +190,7 @@ export function App() {
                       </a>
                     )}
                     <button
-                      onClick={() => deleteInstance(inst.username)}
+                      onClick={() => deleteInstance(inst.name)}
                       className="rounded-md px-3 py-1.5 text-sm font-medium text-red-600 ring-1 ring-red-200 hover:bg-red-50 transition-colors"
                     >
                       Delete
