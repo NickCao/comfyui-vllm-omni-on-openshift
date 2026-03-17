@@ -56,6 +56,19 @@ tests:
             name: VLLM_OMNI_URL
             value: "http://vllm-omni:8080"
 
+  - it: should mount emptyDir at /root for writable home
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: home
+            mountPath: /root
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: home
+            emptyDir: {}
+
   - it: should mount PVC subpaths for persistent directories
     asserts:
       - contains:

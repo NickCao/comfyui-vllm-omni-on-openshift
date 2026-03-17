@@ -52,6 +52,8 @@ spec:
               port: http
             periodSeconds: 30
           volumeMounts:
+            - name: home
+              mountPath: /root
             {{- if .Values.persistence.enabled }}
             - name: data
               mountPath: /root/ComfyUI/custom_nodes
@@ -72,6 +74,8 @@ spec:
               subPath: pre-start.sh
             {{- end }}
       volumes:
+        - name: home
+          emptyDir: {}
         {{- if .Values.persistence.enabled }}
         - name: data
           persistentVolumeClaim:
