@@ -7,7 +7,7 @@ export const config = {
   port: parseInt(process.env.PORT || "3000"),
   sessionSecret: process.env.SESSION_SECRET || "change-me-in-production",
   // Comma-separated list of GitHub usernames allowed to use the portal.
-  // Empty means all authenticated users are allowed.
+  // Must be set — empty list means no users are allowed.
   allowedUsers: parseAllowedUsers(process.env.ALLOWED_GITHUB_USERS || ""),
   github: {
     clientID: process.env.GITHUB_CLIENT_ID || "",

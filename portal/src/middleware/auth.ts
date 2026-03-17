@@ -7,7 +7,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
     return;
   }
   const user = req.user as { username: string };
-  if (config.allowedUsers.length > 0 && !config.allowedUsers.includes(user.username.toLowerCase())) {
+  if (!config.allowedUsers.includes(user.username.toLowerCase())) {
     res.status(403).json({ error: "User not authorized" });
     return;
   }
