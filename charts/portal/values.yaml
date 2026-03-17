@@ -1,7 +1,7 @@
 image:
   repository: registry.example.com/comfyui-portal
   tag: latest
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
 
 replicas: 1
 

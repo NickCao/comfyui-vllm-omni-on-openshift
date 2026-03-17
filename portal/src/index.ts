@@ -43,13 +43,14 @@ if (config.github.clientID) {
 app.use(passport.initialize());
 app.use(passport.session());
 
+app.get("/healthz", (_req, res) => { res.json({ ok: true }); });
 app.use("/auth", authRoutes);
 app.use("/api", apiRoutes);
 
 // Serve static frontend in production
-const publicDir = path.join(__dirname, "..", "public");
+const publicDir = path.join(__dirname, "..", "..", "public");
 app.use(express.static(publicDir));
-app.get("*", (_req, res) => {
+app.get("/{*splat}", (_req, res) => {
   res.sendFile(path.join(publicDir, "index.html"));
 });
 

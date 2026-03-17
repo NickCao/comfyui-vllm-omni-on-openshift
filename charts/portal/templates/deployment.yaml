@@ -55,11 +55,11 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
           readinessProbe:
             httpGet:
-              path: /auth/me
+              path: /healthz
               port: http
             periodSeconds: 10
           livenessProbe:
             httpGet:
-              path: /auth/me
+              path: /healthz
               port: http
             periodSeconds: 30
