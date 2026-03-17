@@ -27,6 +27,8 @@ spec:
           - containerPort: 8080
             protocol: TCP
         env:
+          - name: HOME
+            value: /model-cache
           - name: HF_HOME
             value: /model-cache
           {{- if or .Values.huggingface.token .Values.huggingface.existingSecret }}
