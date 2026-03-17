@@ -1,1 +1,3 @@
 helmfile.local.yaml
+portal/node_modules/
+portal/public/
