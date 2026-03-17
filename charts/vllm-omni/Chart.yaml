@@ -1,0 +1,13 @@
+apiVersion: v2
+name: vllm-omni
+description: Deploy vLLM-Omni as a KServe InferenceService on OpenShift
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - vllm
+  - vllm-omni
+  - kserve
+  - openshift
+  - gpu
+  - image-generation

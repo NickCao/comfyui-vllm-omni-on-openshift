@@ -1,0 +1,78 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: {{ include "vllm-omni.fullname" . }}
+  labels:
+    {{- include "vllm-omni.labels" . | nindent 4 }}
+  annotations:
+    serving.kserve.io/deploymentMode: {{ .Values.inferenceService.deploymentMode }}
+spec:
+  predictor:
+    minReplicas: {{ .Values.inferenceService.minReplicas }}
+    {{- if eq .Values.inferenceService.deploymentMode "Serverless" }}
+    maxReplicas: {{ .Values.inferenceService.maxReplicas }}
+    {{- end }}
+    containers:
+      - name: kserve-container
+        image: {{ printf "%s:%s" .Values.image.repository .Values.image.tag | quote }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        args:
+          - serve
+          - {{ .Values.model.name | quote }}
+          - --omni
+          - --port
+          - "8080"
+          {{- range .Values.model.extraArgs }}
+          - {{ . | quote }}
+          {{- end }}
+        ports:
+          - containerPort: 8080
+            protocol: TCP
+        env:
+          - name: HF_HOME
+            value: /model-cache
+          {{- if or .Values.huggingface.token .Values.huggingface.existingSecret }}
+          - name: HF_TOKEN
+            valueFrom:
+              secretKeyRef:
+                {{- if .Values.huggingface.existingSecret }}
+                name: {{ .Values.huggingface.existingSecret }}
+                key: {{ .Values.huggingface.existingSecretKey }}
+                {{- else }}
+                name: {{ include "vllm-omni.fullname" . }}-hf-token
+                key: token
+                {{- end }}
+          {{- end }}
+          {{- with .Values.extraEnv }}
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          failureThreshold: 60
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          periodSeconds: 30
+        {{- if .Values.modelCache.enabled }}
+        volumeMounts:
+          - name: model-cache
+            mountPath: /model-cache
+        {{- end }}
+    {{- if .Values.modelCache.enabled }}
+    volumes:
+      - name: model-cache
+        persistentVolumeClaim:
+          claimName: {{ include "vllm-omni.fullname" . }}-model-cache
+    {{- end }}

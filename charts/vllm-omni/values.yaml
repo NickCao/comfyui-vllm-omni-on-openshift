@@ -1,0 +1,51 @@
+# Container image for the vLLM-Omni server.
+# Must have vllm-omni installed (pip install vllm-omni).
+image:
+  repository: vllm/vllm-openai
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# Model to serve.
+model:
+  name: Tongyi-MAI/Z-Image-Turbo
+  # Additional arguments passed to `vllm serve`.
+  extraArgs: []
+
+# Resource requests and limits for the inference container.
+resources:
+  requests:
+    cpu: "4"
+    memory: 16Gi
+    nvidia.com/gpu: "1"
+  limits:
+    cpu: "8"
+    memory: 32Gi
+    nvidia.com/gpu: "1"
+
+# Persistent volume for caching downloaded model weights.
+modelCache:
+  enabled: true
+  storageClassName: ""
+  size: 50Gi
+  accessMode: ReadWriteOnce
+
+# HuggingFace credentials for gated model access.
+huggingface:
+  # Provide a token directly (stored in a Secret created by this chart).
+  token: ""
+  # Or reference an existing Secret instead.
+  existingSecret: ""
+  existingSecretKey: token
+
+# KServe InferenceService settings.
+inferenceService:
+  # RawDeployment or Serverless (Knative).
+  # RawDeployment is recommended for GPU workloads.
+  deploymentMode: RawDeployment
+  # Replica settings (minReplicas applies to both modes,
+  # maxReplicas only applies to Serverless).
+  minReplicas: 1
+  maxReplicas: 1
+
+# Additional environment variables for the inference container.
+extraEnv: []
