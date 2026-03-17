@@ -78,11 +78,11 @@ tests:
           path: spec.predictor.containers[0].args
           content: "my-org/my-model"
 
-  - it: should include --model and --port 8080 in args
+  - it: should pass model as positional arg and include --port 8080
     asserts:
-      - contains:
-          path: spec.predictor.containers[0].args
-          content: "--model"
+      - equal:
+          path: spec.predictor.containers[0].args[0]
+          value: "Tongyi-MAI/Z-Image-Turbo"
       - contains:
           path: spec.predictor.containers[0].args
           content: "8080"
