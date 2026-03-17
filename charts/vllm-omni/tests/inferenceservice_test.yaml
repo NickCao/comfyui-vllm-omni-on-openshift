@@ -154,14 +154,14 @@ tests:
           path: spec.predictor.containers[0].resources.limits["nvidia.com/gpu"]
           value: "1"
 
-  - it: should configure startup probe with generous timeout
+  - it: should configure startup probe with generous timeout for model download
     asserts:
       - equal:
           path: spec.predictor.containers[0].startupProbe.httpGet.path
           value: /health
       - equal:
           path: spec.predictor.containers[0].startupProbe.failureThreshold
-          value: 60
+          value: 180
 
   - it: should mount model-cache volume when enabled
     asserts:

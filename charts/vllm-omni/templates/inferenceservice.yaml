@@ -52,7 +52,7 @@ spec:
             port: 8080
           initialDelaySeconds: 30
           periodSeconds: 10
-          failureThreshold: 60
+          failureThreshold: 180
         readinessProbe:
           httpGet:
             path: /health
