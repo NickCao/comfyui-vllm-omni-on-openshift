@@ -242,7 +242,7 @@ export function App() {
                     )}
                     {inst.password && (
                       <p className="mt-1 text-xs text-gray-400">
-                        Password: <code className="rounded bg-gray-100 px-1.5 py-0.5 text-gray-600 select-all">{inst.password}</code>
+                        Login: <code className="rounded bg-gray-100 px-1.5 py-0.5 text-gray-600">comfyui</code> / <code className="rounded bg-gray-100 px-1.5 py-0.5 text-gray-600 select-all">{inst.password}</code>
                       </p>
                     )}
                   </div>
