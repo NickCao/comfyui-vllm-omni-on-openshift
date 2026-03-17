@@ -96,24 +96,28 @@ tests:
             mountPath: /root/ComfyUI/user
             subPath: user
 
-  - it: should mount pre-start script when custom nodes enabled
+  - it: should use init container to copy pre-start script when custom nodes enabled
     asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: setup-scripts
       - contains:
-          path: spec.template.spec.containers[0].volumeMounts
+          path: spec.template.spec.initContainers[0].volumeMounts
+          content:
+            name: home
+            mountPath: /root
+      - contains:
+          path: spec.template.spec.initContainers[0].volumeMounts
           content:
             name: pre-start
-            mountPath: /root/user-scripts/pre-start.sh
-            subPath: pre-start.sh
+            mountPath: /scripts
 
-  - it: should not mount pre-start script when custom nodes disabled
+  - it: should not have init container when custom nodes disabled
     set:
       customNodes.vllmOmni.enabled: false
     asserts:
-      - notContains:
-          path: spec.template.spec.containers[0].volumeMounts
-          content:
-            name: pre-start
-          any: true
+      - notExists:
+          path: spec.template.spec.initContainers
 
   - it: should not mount PVC when persistence is disabled
     set:

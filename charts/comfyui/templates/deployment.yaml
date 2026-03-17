@@ -14,6 +14,17 @@ spec:
       labels:
         {{- include "comfyui.selectorLabels" . | nindent 8 }}
     spec:
+      {{- if .Values.customNodes.vllmOmni.enabled }}
+      initContainers:
+        - name: setup-scripts
+          image: {{ printf "%s:%s" .Values.image.repository .Values.image.tag | quote }}
+          command: ['sh', '-c', 'mkdir -p /root/user-scripts && cp /scripts/pre-start.sh /root/user-scripts/pre-start.sh']
+          volumeMounts:
+            - name: home
+              mountPath: /root
+            - name: pre-start
+              mountPath: /scripts
+      {{- end }}
       containers:
         - name: comfyui
           image: {{ printf "%s:%s" .Values.image.repository .Values.image.tag | quote }}
@@ -67,11 +78,6 @@ spec:
             - name: data
               mountPath: /root/ComfyUI/user
               subPath: user
-            {{- end }}
-            {{- if .Values.customNodes.vllmOmni.enabled }}
-            - name: pre-start
-              mountPath: /root/user-scripts/pre-start.sh
-              subPath: pre-start.sh
             {{- end }}
       volumes:
         - name: home
