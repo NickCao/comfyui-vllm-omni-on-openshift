@@ -13,10 +13,10 @@ rules:
   - apiGroups: [""]
     resources: ["services", "configmaps", "persistentvolumeclaims", "serviceaccounts"]
     verbs: ["*"]
-  # Pod status for live dashboard
+  # Pod status and log streaming for live dashboard
   - apiGroups: [""]
-    resources: ["pods"]
-    verbs: ["list"]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list"]
   - apiGroups: ["apps"]
     resources: ["deployments"]
     verbs: ["*"]
