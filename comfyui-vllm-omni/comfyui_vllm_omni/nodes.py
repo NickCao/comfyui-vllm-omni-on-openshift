@@ -28,9 +28,9 @@ class _VLLMOmniGenerateBase:
     CATEGORY = "vLLM-Omni"
 
     @classmethod
-    def VALIDATE_INPUTS(cls, url, model) -> str | Literal[True]:
+    def VALIDATE_INPUTS(cls, model) -> str | Literal[True]:
         if not model:
-            return "Model must not be empty"
+            return "A model must be selected"
         return True
 
 
@@ -39,8 +39,7 @@ class VLLMOmniGenerateImage(_VLLMOmniGenerateBase):
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "url": (get_model_names(), {"tooltip": "Select a vLLM-Omni model served in the cluster"}),
-                "model": ("STRING", {"default": "Tongyi-MAI/Z-Image-Turbo"}),
+                "model": (get_model_names(), {"tooltip": "Select a vLLM-Omni model served in the cluster"}),
                 "prompt": ("STRING", {"multiline": True}),
                 "negative_prompt": ("STRING", {"multiline": True, "default": ""}),
                 "width": ("INT", {"default": 512, "min": 64, "max": 2048}),
@@ -62,7 +61,6 @@ class VLLMOmniGenerateImage(_VLLMOmniGenerateBase):
 
     async def generate(
         self,
-        url: str,
         model: str,
         prompt: str,
         width: int,
@@ -83,7 +81,7 @@ class VLLMOmniGenerateImage(_VLLMOmniGenerateBase):
         if image is None and mask is not None:
             raise ValueError("Mask input provided without an image input.")
 
-        client = VLLMOmniClient(get_url(url))
+        client = VLLMOmniClient(get_url(model))
 
         spec, pattern = lookup_model_spec(model)
         is_bagel = pattern is not None and "bagel" in pattern.lower()
@@ -148,8 +146,7 @@ class VLLMOmniGenerateVideo(_VLLMOmniGenerateBase):
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "url": (get_model_names(), {"tooltip": "Select a vLLM-Omni model served in the cluster"}),
-                "model": ("STRING", {"default": "Wan-AI/Wan2.2-T2V-A14B-Diffusers"}),
+                "model": (get_model_names(), {"tooltip": "Select a vLLM-Omni model served in the cluster"}),
                 "prompt": ("STRING", {"multiline": True}),
                 "negative_prompt": ("STRING", {"multiline": True, "default": ""}),
                 "width": ("INT", {"default": 832, "min": 1}),
@@ -171,7 +168,6 @@ class VLLMOmniGenerateVideo(_VLLMOmniGenerateBase):
 
     async def generate(
         self,
-        url: str,
         model: str,
         prompt: str,
         width: int,
@@ -205,7 +201,7 @@ class VLLMOmniGenerateVideo(_VLLMOmniGenerateBase):
         if model_params is not None:
             model_params.pop("type", None)  # internal fields
 
-        client = VLLMOmniClient(get_url(url))
+        client = VLLMOmniClient(get_url(model))
         output = await client.generate_video(
             model=model,
             prompt=prompt,
@@ -227,8 +223,7 @@ class VLLMOmniUnderstanding(_VLLMOmniGenerateBase):
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "url": (get_model_names(), {"tooltip": "Select a vLLM-Omni model served in the cluster"}),
-                "model": ("STRING", {"default": "Qwen/Qwen2.5-Omni-7B"}),
+                "model": (get_model_names(), {"tooltip": "Select a vLLM-Omni model served in the cluster"}),
                 "prompt": ("STRING", {"multiline": True}),
                 "output_text": ("BOOLEAN", {"default": True}),
                 "output_audio": ("BOOLEAN", {"default": True}),
@@ -247,8 +242,8 @@ class VLLMOmniUnderstanding(_VLLMOmniGenerateBase):
     FUNCTION = "generate"
 
     @classmethod
-    def VALIDATE_INPUTS(cls, url, model, output_text, output_audio) -> str | Literal[True]:  # type: ignore[reportIncompatibleMethodOverride]
-        super_validation = super().VALIDATE_INPUTS(url, model)
+    def VALIDATE_INPUTS(cls, model, output_text, output_audio) -> str | Literal[True]:  # type: ignore[reportIncompatibleMethodOverride]
+        super_validation = super().VALIDATE_INPUTS(model)
         if isinstance(super_validation, str):
             return super_validation
         if not output_text and not output_audio:
@@ -257,7 +252,6 @@ class VLLMOmniUnderstanding(_VLLMOmniGenerateBase):
 
     async def generate(
         self,
-        url: str,
         model: str,
         prompt: str,
         image: torch.Tensor | None = None,
@@ -274,7 +268,7 @@ class VLLMOmniUnderstanding(_VLLMOmniGenerateBase):
         logger.debug("Got sampling params: %s", sampling_params)
         validate_model_and_sampling_params_types(model, sampling_params)
 
-        client = VLLMOmniClient(get_url(url))
+        client = VLLMOmniClient(get_url(model))
         spec, pattern = lookup_model_spec(model)
         is_bagel = pattern is not None and "bagel" in pattern.lower()
 
@@ -341,11 +335,7 @@ class VLLMOmniTTS(_VLLMOmniGenerateBase):
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "url": (get_model_names(), {"tooltip": "Select a vLLM-Omni model served in the cluster"}),
-                "model": (
-                    "STRING",
-                    {"default": "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"},
-                ),
+                "model": (get_model_names(), {"tooltip": "Select a vLLM-Omni model served in the cluster"}),
                 "input": ("STRING", {"multiline": True}),
                 "voice": ("STRING", {"default": "Vivian"}),
                 "response_format": (["mp3", "opus", "aac", "flac", "wav", "pcm"],),
@@ -365,7 +355,6 @@ class VLLMOmniTTS(_VLLMOmniGenerateBase):
 
     async def generate(
         self,
-        url: str,
         model: str,
         input: str,
         voice: str,
@@ -385,7 +374,7 @@ class VLLMOmniTTS(_VLLMOmniGenerateBase):
 
         combined_params = {**kwargs, **(model_specific_params or {})}
 
-        client = VLLMOmniClient(get_url(url))
+        client = VLLMOmniClient(get_url(model))
 
         audio = await client.generate_speech(
             model=model,
@@ -403,8 +392,7 @@ class VLLMOmniVoiceClone(_VLLMOmniGenerateBase):
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "url": (get_model_names(), {"tooltip": "Select a vLLM-Omni model served in the cluster"}),
-                "model": ("STRING", {"default": "Qwen/Qwen3-TTS-12Hz-1.7B-Base"}),
+                "model": (get_model_names(), {"tooltip": "Select a vLLM-Omni model served in the cluster"}),
                 "input": ("STRING", {"multiline": True}),
                 "voice": ("STRING", {"default": "Vivian"}),
                 "response_format": (["mp3", "opus", "aac", "flac", "wav", "pcm"],),
@@ -427,7 +415,6 @@ class VLLMOmniVoiceClone(_VLLMOmniGenerateBase):
 
     async def generate(
         self,
-        url: str,
         model: str,
         input: str,
         voice: str,
@@ -454,7 +441,7 @@ class VLLMOmniVoiceClone(_VLLMOmniGenerateBase):
             **(model_specific_params or {}),
         }
 
-        client = VLLMOmniClient(get_url(url))
+        client = VLLMOmniClient(get_url(model))
 
         audio = await client.generate_speech(
             model=model,
