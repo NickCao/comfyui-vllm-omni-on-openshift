@@ -11,6 +11,10 @@ data:
     CUSTOM_NODES_DIR="/root/ComfyUI/custom_nodes/comfyui-vllm-omni"
     if [ ! -d "$CUSTOM_NODES_DIR" ]; then
         echo "Installing comfyui-vllm-omni custom nodes..."
-        git clone {{ .Values.customNodes.vllmOmni.repository | quote }} "$CUSTOM_NODES_DIR"
+        TMPDIR=$(mktemp -d)
+        git clone --depth 1 --filter=blob:none --sparse {{ .Values.customNodes.vllmOmni.repository | quote }} "$TMPDIR"
+        cd "$TMPDIR" && git sparse-checkout set {{ .Values.customNodes.vllmOmni.path | quote }}
+        mv "$TMPDIR"/{{ .Values.customNodes.vllmOmni.path | quote }} "$CUSTOM_NODES_DIR"
+        rm -rf "$TMPDIR"
     fi
 {{- end }}

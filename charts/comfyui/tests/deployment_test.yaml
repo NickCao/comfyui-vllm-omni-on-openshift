@@ -38,24 +38,6 @@ tests:
             name: CLI_ARGS
             value: "--cpu"
 
-  - it: should not set VLLM_OMNI_URL by default
-    asserts:
-      - notContains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: VLLM_OMNI_URL
-          any: true
-
-  - it: should set VLLM_OMNI_URL when configured
-    set:
-      vllmOmniUrl: http://vllm-omni:8080
-    asserts:
-      - contains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: VLLM_OMNI_URL
-            value: "http://vllm-omni:8080"
-
   - it: should mount PVC at /root when persistence is enabled
     asserts:
       - contains:

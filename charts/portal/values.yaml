@@ -22,7 +22,6 @@ allowedGithubUsers: ""
 helm:
   chartPath: /app/charts/comfyui
   releasePrefix: comfyui-
-  vllmOmniUrl: ""
 
 # OpenShift Route.
 route:

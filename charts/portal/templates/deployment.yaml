@@ -49,8 +49,6 @@ spec:
               value: {{ .Values.helm.chartPath | quote }}
             - name: COMFYUI_NAMESPACE
               value: {{ .Release.Namespace }}
-            - name: VLLM_OMNI_URL
-              value: {{ .Values.helm.vllmOmniUrl | quote }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           readinessProbe:

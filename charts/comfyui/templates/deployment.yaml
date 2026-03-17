@@ -16,6 +16,7 @@ spec:
       labels:
         {{- include "comfyui.selectorLabels" . | nindent 8 }}
     spec:
+      serviceAccountName: {{ include "comfyui.fullname" . }}
       {{- if .Values.customNodes.vllmOmni.enabled }}
       initContainers:
         - name: setup-scripts
@@ -38,10 +39,6 @@ spec:
           env:
             - name: CLI_ARGS
               value: {{ .Values.cliArgs | quote }}
-            {{- if .Values.vllmOmniUrl }}
-            - name: VLLM_OMNI_URL
-              value: {{ .Values.vllmOmniUrl | quote }}
-            {{- end }}
             {{- with .Values.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

@@ -18,8 +18,5 @@ export const config = {
     chartPath: process.env.COMFYUI_CHART_PATH || "../charts/comfyui",
     namespace: process.env.COMFYUI_NAMESPACE || "comfyui-vllm-omni",
     releasePrefix: "comfyui-",
-    defaultValues: {
-      vllmOmniUrl: process.env.VLLM_OMNI_URL || "",
-    },
   },
 };

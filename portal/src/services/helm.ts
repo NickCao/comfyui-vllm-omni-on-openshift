@@ -14,12 +14,21 @@ export interface HelmRelease {
   app_version: string;
 }
 
+export interface PodStatus {
+  name: string;
+  phase: string;
+  ready: boolean;
+  restarts: number;
+  message: string;
+}
+
 export interface Instance {
   name: string;
   username: string;
   status: string;
   updated: string;
   routeUrl: string;
+  pods: PodStatus[];
 }
 
 function releaseName(username: string, suffix?: string): string {
@@ -30,6 +39,47 @@ function releaseName(username: string, suffix?: string): string {
 async function helm(...args: string[]): Promise<string> {
   const { stdout } = await exec("helm", args);
   return stdout;
+}
+
+interface KubePod {
+  metadata: { name: string };
+  status: {
+    phase: string;
+    containerStatuses?: {
+      ready: boolean;
+      restartCount: number;
+      state: {
+        waiting?: { reason: string; message?: string };
+        terminated?: { reason: string };
+      };
+    }[];
+  };
+}
+
+async function getPodStatuses(releaseName: string): Promise<PodStatus[]> {
+  try {
+    const { stdout } = await exec("kubectl", [
+      "get", "pods",
+      "--namespace", config.helm.namespace,
+      "-l", `app.kubernetes.io/instance=${releaseName}`,
+      "-o", "json",
+    ]);
+    const data = JSON.parse(stdout);
+    return (data.items as KubePod[]).map((pod) => {
+      const cs = pod.status.containerStatuses?.[0];
+      const waiting = cs?.state?.waiting;
+      const terminated = cs?.state?.terminated;
+      return {
+        name: pod.metadata.name,
+        phase: waiting?.reason ?? terminated?.reason ?? pod.status.phase,
+        ready: cs?.ready ?? false,
+        restarts: cs?.restartCount ?? 0,
+        message: waiting?.message ?? "",
+      };
+    });
+  } catch {
+    return [];
+  }
 }
 
 async function getRouteUrl(releaseName: string): Promise<string> {
@@ -58,13 +108,20 @@ export async function listInstances(): Promise<Instance[]> {
 
   const releases: HelmRelease[] = JSON.parse(output);
   return Promise.all(
-    releases.map(async (r) => ({
-      name: r.name,
-      username: r.name.replace(config.helm.releasePrefix, ""),
-      status: r.status,
-      updated: r.updated,
-      routeUrl: await getRouteUrl(r.name),
-    }))
+    releases.map(async (r) => {
+      const [routeUrl, pods] = await Promise.all([
+        getRouteUrl(r.name),
+        getPodStatuses(r.name),
+      ]);
+      return {
+        name: r.name,
+        username: r.name.replace(config.helm.releasePrefix, ""),
+        status: r.status,
+        updated: r.updated,
+        routeUrl,
+        pods,
+      };
+    })
   );
 }
 
@@ -76,26 +133,25 @@ export async function getInstance(username: string): Promise<Instance | null> {
 export async function createInstance(username: string, suffix?: string): Promise<Instance> {
   const name = releaseName(username, suffix);
 
-  const setArgs: string[] = [];
-  if (config.helm.defaultValues.vllmOmniUrl) {
-    setArgs.push("--set", `vllmOmniUrl=${config.helm.defaultValues.vllmOmniUrl}`);
-  }
-
   await helm(
     "install",
     name,
     config.helm.chartPath,
     "--namespace",
     config.helm.namespace,
-    ...setArgs
   );
 
+  const [routeUrl, pods] = await Promise.all([
+    getRouteUrl(name),
+    getPodStatuses(name),
+  ]);
   return {
     name,
     username,
     status: "deployed",
     updated: new Date().toISOString(),
-    routeUrl: await getRouteUrl(name),
+    routeUrl,
+    pods,
   };
 }
 

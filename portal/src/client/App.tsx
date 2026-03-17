@@ -1,9 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 interface User {
   username: string;
   displayName: string;
   avatar: string;
+}
+
+interface PodStatus {
+  name: string;
+  phase: string;
+  ready: boolean;
+  restarts: number;
+  message: string;
 }
 
 interface Instance {
@@ -12,20 +20,36 @@ interface Instance {
   status: string;
   updated: string;
   routeUrl: string;
+  pods: PodStatus[];
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const colors =
-    status === "deployed"
-      ? "bg-emerald-50 text-emerald-700"
-      : status === "failed"
-        ? "bg-red-50 text-red-700"
-        : "bg-gray-100 text-gray-600";
+function PodBadge({ pod }: { pod: PodStatus }) {
+  const isReady = pod.ready;
+  const isCrash = pod.phase === "CrashLoopBackOff" || pod.phase === "Error";
+  const isPending = pod.phase === "Pending" || pod.phase === "ContainerCreating" || pod.phase === "PodInitializing";
+
+  const colors = isReady
+    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+    : isCrash
+      ? "bg-red-50 text-red-700 border-red-200"
+      : isPending
+        ? "bg-amber-50 text-amber-700 border-amber-200"
+        : "bg-gray-50 text-gray-600 border-gray-200";
+
+  const label = isReady ? "Ready" : pod.phase;
+
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${colors}`}>
-      <span className="h-1.5 w-1.5 rounded-full bg-current" />
-      {status}
-    </span>
+    <div className={`rounded-lg border px-3 py-2 ${colors}`}>
+      <div className="flex items-center gap-1.5">
+        <span className={`h-2 w-2 rounded-full ${isReady ? "bg-emerald-500" : isCrash ? "bg-red-500" : isPending ? "bg-amber-500 animate-pulse" : "bg-gray-400"}`} />
+        <span className="text-xs font-medium">{label}</span>
+        {pod.restarts > 0 && (
+          <span className="text-xs opacity-60">({pod.restarts} restarts)</span>
+        )}
+      </div>
+      <p className="mt-0.5 text-xs opacity-60 font-mono truncate">{pod.name}</p>
+      {pod.message && <p className="mt-0.5 text-xs opacity-75 truncate">{pod.message}</p>}
+    </div>
   );
 }
 
@@ -36,6 +60,7 @@ export function App() {
   const [creating, setCreating] = useState(false);
   const [instanceName, setInstanceName] = useState("");
   const [error, setError] = useState("");
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     fetch("/auth/me")
@@ -45,7 +70,10 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (user) refreshInstances();
+    if (!user) return;
+    refreshInstances();
+    intervalRef.current = setInterval(refreshInstances, 5000);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [user]);
 
   async function refreshInstances() {
@@ -163,21 +191,24 @@ export function App() {
           </form>
         </div>
 
-        <div className="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5">
+        <div className="space-y-3">
           {instances.length === 0 ? (
-            <div className="px-6 py-16 text-center">
+            <div className="rounded-xl bg-white px-6 py-16 text-center shadow-sm ring-1 ring-gray-950/5">
               <p className="text-sm text-gray-500">No instances yet.</p>
               <p className="mt-1 text-xs text-gray-400">Create one to get started with ComfyUI.</p>
             </div>
           ) : (
-            <ul className="divide-y divide-gray-100">
-              {instances.map((inst) => (
-                <li key={inst.name} className="flex items-center gap-4 px-6 py-4">
+            instances.map((inst) => (
+              <div key={inst.name} className="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5">
+                <div className="flex items-center gap-4 px-6 py-4">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-gray-900">{inst.name}</p>
-                    <p className="text-xs text-gray-400">{inst.username}</p>
+                    {inst.routeUrl && (
+                      <a href={inst.routeUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline break-all">
+                        {inst.routeUrl}
+                      </a>
+                    )}
                   </div>
-                  <StatusBadge status={inst.status} />
                   <div className="flex items-center gap-2">
                     {inst.routeUrl && (
                       <a
@@ -196,9 +227,18 @@ export function App() {
                       Delete
                     </button>
                   </div>
-                </li>
-              ))}
-            </ul>
+                </div>
+                {inst.pods.length > 0 && (
+                  <div className="border-t border-gray-100 px-6 py-3">
+                    <div className="flex flex-wrap gap-2">
+                      {inst.pods.map((pod) => (
+                        <PodBadge key={pod.name} pod={pod} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))
           )}
         </div>
       </main>
