@@ -1,6 +1,6 @@
 releases:
   - name: vllm-omni-z-image-turbo
-    namespace: comfyui-vllm-omni
+    namespace: ncao
     chart: ./charts/vllm-omni
     values:
       - values/vllm-omni.yaml
