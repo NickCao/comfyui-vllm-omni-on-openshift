@@ -1,0 +1,212 @@
+suite: InferenceService
+templates:
+  - templates/inferenceservice.yaml
+
+tests:
+  - it: should render an InferenceService
+    asserts:
+      - isKind:
+          of: InferenceService
+      - isAPIVersion:
+          of: serving.kserve.io/v1beta1
+
+  - it: should use the correct name
+    release:
+      name: my-release
+    asserts:
+      - equal:
+          path: metadata.name
+          value: my-release-vllm-omni
+
+  - it: should set RawDeployment mode by default
+    asserts:
+      - equal:
+          path: metadata.annotations["serving.kserve.io/deploymentMode"]
+          value: RawDeployment
+
+  - it: should set Serverless mode when configured
+    set:
+      inferenceService.deploymentMode: Serverless
+    asserts:
+      - equal:
+          path: metadata.annotations["serving.kserve.io/deploymentMode"]
+          value: Serverless
+
+  - it: should render maxReplicas only in Serverless mode
+    set:
+      inferenceService.deploymentMode: Serverless
+      inferenceService.maxReplicas: 3
+    asserts:
+      - equal:
+          path: spec.predictor.maxReplicas
+          value: 3
+
+  - it: should not render maxReplicas in RawDeployment mode
+    set:
+      inferenceService.deploymentMode: RawDeployment
+      inferenceService.maxReplicas: 3
+    asserts:
+      - notExists:
+          path: spec.predictor.maxReplicas
+
+  - it: should use the default image
+    asserts:
+      - equal:
+          path: spec.predictor.containers[0].image
+          value: "vllm/vllm-openai:latest"
+
+  - it: should use a custom image when set
+    set:
+      image.repository: my-registry/vllm-omni
+      image.tag: v0.6.0
+    asserts:
+      - equal:
+          path: spec.predictor.containers[0].image
+          value: "my-registry/vllm-omni:v0.6.0"
+
+  - it: should serve the default model
+    asserts:
+      - contains:
+          path: spec.predictor.containers[0].args
+          content: "Tongyi-MAI/Z-Image-Turbo"
+
+  - it: should serve a custom model when set
+    set:
+      model.name: my-org/my-model
+    asserts:
+      - contains:
+          path: spec.predictor.containers[0].args
+          content: "my-org/my-model"
+
+  - it: should include --omni and --port 8080 in args
+    asserts:
+      - contains:
+          path: spec.predictor.containers[0].args
+          content: "--omni"
+      - contains:
+          path: spec.predictor.containers[0].args
+          content: "8080"
+
+  - it: should append extra args
+    set:
+      model.extraArgs:
+        - "--tensor-parallel-size"
+        - "2"
+    asserts:
+      - contains:
+          path: spec.predictor.containers[0].args
+          content: "--tensor-parallel-size"
+      - contains:
+          path: spec.predictor.containers[0].args
+          content: "2"
+
+  - it: should set HF_HOME to /model-cache
+    asserts:
+      - contains:
+          path: spec.predictor.containers[0].env
+          content:
+            name: HF_HOME
+            value: /model-cache
+
+  - it: should not set HF_TOKEN by default
+    asserts:
+      - notContains:
+          path: spec.predictor.containers[0].env
+          content:
+            name: HF_TOKEN
+          any: true
+
+  - it: should set HF_TOKEN from chart-managed secret when token is provided
+    release:
+      name: my-release
+    set:
+      huggingface.token: hf_test123
+    asserts:
+      - contains:
+          path: spec.predictor.containers[0].env
+          content:
+            name: HF_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: my-release-vllm-omni-hf-token
+                key: token
+
+  - it: should set HF_TOKEN from existing secret when configured
+    set:
+      huggingface.existingSecret: my-hf-secret
+      huggingface.existingSecretKey: api-token
+    asserts:
+      - contains:
+          path: spec.predictor.containers[0].env
+          content:
+            name: HF_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: my-hf-secret
+                key: api-token
+
+  - it: should set default resource requests and limits
+    asserts:
+      - equal:
+          path: spec.predictor.containers[0].resources.requests["nvidia.com/gpu"]
+          value: "1"
+      - equal:
+          path: spec.predictor.containers[0].resources.limits["nvidia.com/gpu"]
+          value: "1"
+
+  - it: should configure startup probe with generous timeout
+    asserts:
+      - equal:
+          path: spec.predictor.containers[0].startupProbe.httpGet.path
+          value: /health
+      - equal:
+          path: spec.predictor.containers[0].startupProbe.failureThreshold
+          value: 60
+
+  - it: should mount model-cache volume when enabled
+    asserts:
+      - contains:
+          path: spec.predictor.containers[0].volumeMounts
+          content:
+            name: model-cache
+            mountPath: /model-cache
+      - contains:
+          path: spec.predictor.volumes
+          content:
+            name: model-cache
+          any: true
+
+  - it: should not mount model-cache volume when disabled
+    set:
+      modelCache.enabled: false
+    asserts:
+      - notExists:
+          path: spec.predictor.containers[0].volumeMounts
+      - notExists:
+          path: spec.predictor.volumes
+
+  - it: should inject extra environment variables
+    set:
+      extraEnv:
+        - name: CUDA_VISIBLE_DEVICES
+          value: "0,1"
+    asserts:
+      - contains:
+          path: spec.predictor.containers[0].env
+          content:
+            name: CUDA_VISIBLE_DEVICES
+            value: "0,1"
+
+  - it: should include common labels
+    release:
+      name: my-release
+    asserts:
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: vllm-omni
+      - equal:
+          path: metadata.labels["app.kubernetes.io/instance"]
+          value: my-release
+      - equal:
+          path: metadata.labels["app.kubernetes.io/managed-by"]
+          value: Helm

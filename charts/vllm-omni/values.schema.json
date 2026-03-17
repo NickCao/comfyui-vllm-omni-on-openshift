@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "nameOverride": {
+      "type": "string",
+      "description": "Override the chart name."
+    },
+    "fullnameOverride": {
+      "type": "string",
+      "description": "Override the full release name."
+    },
+    "image": {
+      "type": "object",
+      "description": "Container image for the vLLM-Omni server.",
+      "additionalProperties": false,
+      "required": ["repository", "tag"],
+      "properties": {
+        "repository": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Image repository. Must have vllm-omni installed."
+        },
+        "tag": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Image tag."
+        },
+        "pullPolicy": {
+          "type": "string",
+          "enum": ["Always", "IfNotPresent", "Never"],
+          "description": "Image pull policy."
+        }
+      }
+    },
+    "model": {
+      "type": "object",
+      "description": "Model configuration.",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "HuggingFace model identifier to serve."
+        },
+        "extraArgs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Additional arguments passed to `vllm serve`."
+        }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "description": "Resource requests and limits for the inference container.",
+      "additionalProperties": false,
+      "properties": {
+        "requests": {
+          "type": "object",
+          "description": "Resource requests.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "limits": {
+          "type": "object",
+          "description": "Resource limits.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "modelCache": {
+      "type": "object",
+      "description": "Persistent volume for caching downloaded model weights.",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable PVC for model cache."
+        },
+        "storageClassName": {
+          "type": "string",
+          "description": "StorageClass name. Empty string uses the cluster default."
+        },
+        "size": {
+          "type": "string",
+          "pattern": "^[0-9]+(Ki|Mi|Gi|Ti|Pi|Ei)?$",
+          "description": "PVC size (e.g. 50Gi)."
+        },
+        "accessMode": {
+          "type": "string",
+          "enum": ["ReadWriteOnce", "ReadWriteMany", "ReadOnlyMany"],
+          "description": "PVC access mode."
+        }
+      }
+    },
+    "huggingface": {
+      "type": "object",
+      "description": "HuggingFace credentials for gated model access.",
+      "additionalProperties": false,
+      "properties": {
+        "token": {
+          "type": "string",
+          "description": "HuggingFace API token. Stored in a Secret created by this chart."
+        },
+        "existingSecret": {
+          "type": "string",
+          "description": "Name of an existing Secret containing the HF token. Takes precedence over token."
+        },
+        "existingSecretKey": {
+          "type": "string",
+          "description": "Key within the existing Secret that holds the token."
+        }
+      }
+    },
+    "inferenceService": {
+      "type": "object",
+      "description": "KServe InferenceService settings.",
+      "additionalProperties": false,
+      "properties": {
+        "deploymentMode": {
+          "type": "string",
+          "enum": ["RawDeployment", "Serverless"],
+          "description": "KServe deployment mode. RawDeployment is recommended for GPU workloads."
+        },
+        "minReplicas": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Minimum number of replicas."
+        },
+        "maxReplicas": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum number of replicas (Serverless mode only)."
+        }
+      }
+    },
+    "extraEnv": {
+      "type": "array",
+      "description": "Additional environment variables for the inference container.",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Environment variable name."
+          },
+          "value": {
+            "type": "string",
+            "description": "Environment variable value."
+          },
+          "valueFrom": {
+            "type": "object",
+            "description": "Source for the environment variable value."
+          }
+        }
+      }
+    }
+  }
+}
