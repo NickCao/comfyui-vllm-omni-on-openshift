@@ -80,7 +80,7 @@ spec:
               mountPath: /etc/nginx/auth
           readinessProbe:
             httpGet:
-              path: /
+              path: /healthz
               port: auth
             periodSeconds: 10
         {{- end }}
