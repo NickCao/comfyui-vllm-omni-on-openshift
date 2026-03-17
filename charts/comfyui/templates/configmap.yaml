@@ -8,13 +8,20 @@ metadata:
 data:
   pre-start.sh: |
     #!/bin/bash
-    CUSTOM_NODES_DIR="/root/ComfyUI/custom_nodes/comfyui-vllm-omni"
+    CUSTOM_NODES_DIR="/root/ComfyUI/custom_nodes/ComfyUI-vLLM-Omni"
     if [ ! -d "$CUSTOM_NODES_DIR" ]; then
-        echo "Installing comfyui-vllm-omni custom nodes..."
+        echo "Installing official vLLM-Omni custom nodes..."
         TMPDIR=$(mktemp -d)
         git clone --depth 1 --filter=blob:none --sparse {{ .Values.customNodes.vllmOmni.repository | quote }} "$TMPDIR"
         cd "$TMPDIR" && git sparse-checkout set {{ .Values.customNodes.vllmOmni.path | quote }}
         mv "$TMPDIR"/{{ .Values.customNodes.vllmOmni.path | quote }} "$CUSTOM_NODES_DIR"
+        rm -rf "$TMPDIR"
+
+        echo "Applying K8s discovery patch..."
+        TMPDIR=$(mktemp -d)
+        git clone --depth 1 --filter=blob:none --sparse {{ .Values.customNodes.vllmOmni.patchRepository | quote }} "$TMPDIR"
+        cd "$TMPDIR" && git sparse-checkout set {{ .Values.customNodes.vllmOmni.patchPath | quote }}
+        cp -r "$TMPDIR"/{{ .Values.customNodes.vllmOmni.patchPath | quote }}/* "$CUSTOM_NODES_DIR/comfyui_vllm_omni/"
         rm -rf "$TMPDIR"
     fi
 {{- end }}

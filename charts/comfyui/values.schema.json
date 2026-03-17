@@ -54,6 +54,14 @@
             "path": {
               "type": "string",
               "minLength": 1
+            },
+            "patchRepository": {
+              "type": "string",
+              "minLength": 1
+            },
+            "patchPath": {
+              "type": "string",
+              "minLength": 1
             }
           }
         }

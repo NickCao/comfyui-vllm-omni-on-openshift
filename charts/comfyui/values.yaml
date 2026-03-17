@@ -16,9 +16,12 @@ cliArgs: "--cpu"
 customNodes:
   vllmOmni:
     enabled: true
-    repository: https://github.com/NickCao/comfyui-vllm-omni-on-openshift.git
-    # Sparse checkout path within the repo containing the custom nodes
-    path: comfyui-vllm-omni
+    # Official vLLM-Omni custom nodes
+    repository: https://github.com/vllm-project/vllm-omni.git
+    path: apps/ComfyUI-vLLM-Omni
+    # K8s discovery patch from this project
+    patchRepository: https://github.com/NickCao/comfyui-vllm-omni-on-openshift.git
+    patchPath: comfyui-vllm-omni/comfyui_vllm_omni
 
 # Persistent volume for ComfyUI user data (models, outputs, custom nodes).
 persistence:

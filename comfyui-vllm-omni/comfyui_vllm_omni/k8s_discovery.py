@@ -13,7 +13,6 @@ from urllib.error import URLError
 
 
 def _get_namespace() -> str:
-    """Read the pod's namespace from the mounted service account."""
     try:
         with open("/var/run/secrets/kubernetes.io/serviceaccount/namespace") as f:
             return f.read().strip()
@@ -22,26 +21,16 @@ def _get_namespace() -> str:
 
 
 def _get_token() -> str:
-    """Read the in-cluster service account token."""
     with open("/var/run/secrets/kubernetes.io/serviceaccount/token") as f:
         return f.read().strip()
 
 
-def _get_ca_path() -> str:
-    return "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-
-
 def _extract_model_name(item: dict) -> str:
-    """Extract the model name from an InferenceService's container args.
-
-    The vLLM-Omni chart passes the model as the first positional arg
-    (e.g. "Tongyi-MAI/Z-Image-Turbo").
-    """
+    """Extract the model name from an InferenceService's container args."""
     try:
         containers = item["spec"]["predictor"]["containers"]
         for container in containers:
             for arg in container.get("args", []):
-                # Skip flags (--port, --omni, etc.)
                 if not arg.startswith("-"):
                     return arg
     except (KeyError, IndexError):
@@ -49,14 +38,13 @@ def _extract_model_name(item: dict) -> str:
     return item["metadata"]["name"]
 
 
-def discover_vllm_omni_instances() -> Dict[str, str]:
+def discover() -> Dict[str, str]:
     """
-    Query the K8s API for InferenceService resources and return a mapping
-    of model name to base URL.
+    Query the K8s API for InferenceService resources.
 
     Returns:
-        Dict mapping model names to service URLs, e.g.:
-        {"Tongyi-MAI/Z-Image-Turbo": "http://vllm-omni-z-image-turbo-predictor.ncao.svc.cluster.local:8080"}
+        Dict mapping model names to base URLs, e.g.:
+        {"Tongyi-MAI/Z-Image-Turbo": "http://vllm-omni-z-image-turbo-predictor.ncao.svc.cluster.local:8080/v1"}
     """
     namespace = _get_namespace()
     api_host = os.environ.get("KUBERNETES_SERVICE_HOST", "kubernetes.default.svc")
@@ -73,7 +61,9 @@ def discover_vllm_omni_instances() -> Dict[str, str]:
         return {}
 
     import ssl
-    ctx = ssl.create_default_context(cafile=_get_ca_path())
+    ctx = ssl.create_default_context(
+        cafile="/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+    )
 
     req = Request(api_url, headers={"Authorization": f"Bearer {token}"})
 
@@ -88,7 +78,7 @@ def discover_vllm_omni_instances() -> Dict[str, str]:
     for item in data.get("items", []):
         name = item["metadata"]["name"]
         model_name = _extract_model_name(item)
-        url = f"http://{name}-predictor.{namespace}.svc.cluster.local:8080"
+        url = f"http://{name}-predictor.{namespace}.svc.cluster.local:8080/v1"
         instances[model_name] = url
 
     if instances:
@@ -99,32 +89,21 @@ def discover_vllm_omni_instances() -> Dict[str, str]:
     return instances
 
 
-# Module-level cache populated on import
-_cached_instances: Dict[str, str] = {}
+_cache: Dict[str, str] = {}
 
 
 def get_instances() -> Dict[str, str]:
-    """Return cached instances, discovering on first call."""
-    global _cached_instances
-    if not _cached_instances:
-        _cached_instances = discover_vllm_omni_instances()
-    return _cached_instances
+    global _cache
+    if not _cache:
+        _cache = discover()
+    return _cache
 
 
-def refresh_instances() -> Dict[str, str]:
-    """Force re-discovery of instances."""
-    global _cached_instances
-    _cached_instances = discover_vllm_omni_instances()
-    return _cached_instances
-
-
-def get_instance_names() -> List[str]:
-    """Return list of model names for ComfyUI enum fields."""
+def get_model_names() -> List[str]:
     instances = get_instances()
     return list(instances.keys()) if instances else ["(no models found)"]
 
 
-def get_instance_url(model_name: str) -> str:
-    """Resolve a model name to its service URL."""
+def get_url(model_name: str) -> str:
     instances = get_instances()
-    return instances.get(model_name, "http://localhost:8000")
+    return instances.get(model_name, "http://localhost:8000/v1")
