@@ -67,6 +67,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Lowercase owner
+        id: owner
+        run: echo "name=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
@@ -74,5 +78,5 @@ jobs:
           file: portal/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/comfyui-portal:latest
-            ghcr.io/${{ github.repository_owner }}/comfyui-portal:${{ github.sha }}
+            ghcr.io/${{ steps.owner.outputs.name }}/comfyui-portal:latest
+            ghcr.io/${{ steps.owner.outputs.name }}/comfyui-portal:${{ github.sha }}
