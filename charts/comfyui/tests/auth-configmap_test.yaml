@@ -1,0 +1,76 @@
+suite: Auth ConfigMap
+templates:
+  - templates/auth-configmap.yaml
+
+tests:
+  - it: should render a ConfigMap when auth is enabled
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - isAPIVersion:
+          of: v1
+
+  - it: should not render when auth is disabled
+    set:
+      auth.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should use the correct name
+    release:
+      name: my-release
+    asserts:
+      - equal:
+          path: metadata.name
+          value: my-release-comfyui-nginx
+
+  - it: should include common labels
+    release:
+      name: my-release
+    asserts:
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: comfyui
+      - equal:
+          path: metadata.labels["app.kubernetes.io/instance"]
+          value: my-release
+
+  - it: should listen on port 8080
+    asserts:
+      - matchRegex:
+          path: data["default.conf"]
+          pattern: "listen 8080"
+
+  - it: should proxy to ComfyUI on port 8188
+    asserts:
+      - matchRegex:
+          path: data["default.conf"]
+          pattern: "proxy_pass http://localhost:8188"
+
+  - it: should disable auth on the healthz endpoint
+    asserts:
+      - matchRegex:
+          path: data["default.conf"]
+          pattern: "location = /healthz"
+      - matchRegex:
+          path: data["default.conf"]
+          pattern: "auth_basic off"
+
+  - it: should enable basic auth with htpasswd file
+    asserts:
+      - matchRegex:
+          path: data["default.conf"]
+          pattern: 'auth_basic "ComfyUI"'
+      - matchRegex:
+          path: data["default.conf"]
+          pattern: "auth_basic_user_file /etc/nginx/auth/htpasswd"
+
+  - it: should configure WebSocket upgrade headers
+    asserts:
+      - matchRegex:
+          path: data["default.conf"]
+          pattern: "proxy_set_header Upgrade"
+      - matchRegex:
+          path: data["default.conf"]
+          pattern: 'proxy_set_header Connection "upgrade"'

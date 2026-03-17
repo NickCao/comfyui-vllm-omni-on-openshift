@@ -15,4 +15,8 @@ export default defineConfig({
       "/auth": "http://localhost:3000",
     },
   },
+  test: {
+    root: ".",
+    include: ["src/__tests__/**/*.test.ts"],
+  },
 });
