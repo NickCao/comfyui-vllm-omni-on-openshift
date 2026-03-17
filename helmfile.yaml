@@ -1,0 +1,6 @@
+releases:
+  - name: vllm-omni
+    namespace: comfyui-vllm-omni
+    chart: ./charts/vllm-omni
+    values:
+      - values/vllm-omni.yaml
