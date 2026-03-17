@@ -1,0 +1,48 @@
+suite: Route
+templates:
+  - templates/route.yaml
+
+tests:
+  - it: should render a Route by default
+    asserts:
+      - isKind:
+          of: Route
+      - isAPIVersion:
+          of: route.openshift.io/v1
+
+  - it: should not render when disabled
+    set:
+      route.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should use edge TLS termination by default
+    asserts:
+      - equal:
+          path: spec.tls.termination
+          value: edge
+
+  - it: should not set host when empty
+    asserts:
+      - notExists:
+          path: spec.host
+
+  - it: should set host when specified
+    set:
+      route.host: comfyui.example.com
+    asserts:
+      - equal:
+          path: spec.host
+          value: comfyui.example.com
+
+  - it: should target the service on http port
+    release:
+      name: my-release
+    asserts:
+      - equal:
+          path: spec.to.name
+          value: my-release-comfyui
+      - equal:
+          path: spec.port.targetPort
+          value: http

@@ -1,0 +1,16 @@
+{{- if .Values.customNodes.vllmOmni.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "comfyui.fullname" . }}-scripts
+  labels:
+    {{- include "comfyui.labels" . | nindent 4 }}
+data:
+  pre-start.sh: |
+    #!/bin/bash
+    CUSTOM_NODES_DIR="/root/ComfyUI/custom_nodes/comfyui-vllm-omni"
+    if [ ! -d "$CUSTOM_NODES_DIR" ]; then
+        echo "Installing comfyui-vllm-omni custom nodes..."
+        git clone {{ .Values.customNodes.vllmOmni.repository | quote }} "$CUSTOM_NODES_DIR"
+    fi
+{{- end }}

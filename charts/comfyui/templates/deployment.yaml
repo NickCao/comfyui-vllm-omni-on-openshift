@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "comfyui.fullname" . }}
+  labels:
+    {{- include "comfyui.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      {{- include "comfyui.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "comfyui.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: comfyui
+          image: {{ printf "%s:%s" .Values.image.repository .Values.image.tag | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8188
+              protocol: TCP
+          env:
+            - name: CLI_ARGS
+              value: {{ .Values.cliArgs | quote }}
+            {{- if .Values.vllmOmniUrl }}
+            - name: VLLM_OMNI_URL
+              value: {{ .Values.vllmOmniUrl | quote }}
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 30
+          volumeMounts:
+            {{- if .Values.persistence.enabled }}
+            - name: data
+              mountPath: /root
+            {{- end }}
+            {{- if .Values.customNodes.vllmOmni.enabled }}
+            - name: pre-start
+              mountPath: /root/user-scripts/pre-start.sh
+              subPath: pre-start.sh
+            {{- end }}
+      volumes:
+        {{- if .Values.persistence.enabled }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "comfyui.fullname" . }}-data
+        {{- end }}
+        {{- if .Values.customNodes.vllmOmni.enabled }}
+        - name: pre-start
+          configMap:
+            name: {{ include "comfyui.fullname" . }}-scripts
+            defaultMode: 0755
+        {{- end }}

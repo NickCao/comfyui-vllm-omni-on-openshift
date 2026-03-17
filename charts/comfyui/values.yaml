@@ -1,0 +1,49 @@
+# Container image for ComfyUI.
+# https://hub.docker.com/r/yanwk/comfyui-boot/tags
+image:
+  repository: yanwk/comfyui-boot
+  tag: cpu
+  pullPolicy: IfNotPresent
+
+# Number of replicas.
+replicas: 1
+
+# Additional CLI arguments passed to ComfyUI via CLI_ARGS.
+# The entrypoint already passes --listen and --port 8188.
+cliArgs: "--cpu"
+
+# vLLM-Omni endpoint URL (e.g. http://vllm-omni-z-image-turbo-predictor.ncao.svc.cluster.local).
+# Passed to ComfyUI as VLLM_OMNI_URL environment variable.
+vllmOmniUrl: ""
+
+# Install comfyui-vllm-omni custom nodes on first boot.
+customNodes:
+  vllmOmni:
+    enabled: true
+    repository: https://github.com/dougbtv/comfyui-vllm-omni.git
+
+# Persistent volume for ComfyUI user data (models, outputs, custom nodes).
+persistence:
+  enabled: true
+  storageClassName: ""
+  size: 10Gi
+  accessMode: ReadWriteOnce
+
+# OpenShift Route for external access.
+route:
+  enabled: true
+  host: ""
+  tls:
+    termination: edge
+
+# Resource requests and limits.
+resources:
+  requests:
+    cpu: "1"
+    memory: 2Gi
+  limits:
+    cpu: "2"
+    memory: 4Gi
+
+# Additional environment variables.
+extraEnv: []

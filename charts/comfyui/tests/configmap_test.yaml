@@ -1,0 +1,24 @@
+suite: ConfigMap
+templates:
+  - templates/configmap.yaml
+
+tests:
+  - it: should render when custom nodes enabled
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - isNotEmpty:
+          path: data["pre-start.sh"]
+
+  - it: should not render when custom nodes disabled
+    set:
+      customNodes.vllmOmni.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should contain the git clone command with configured repo
+    asserts:
+      - matchRegex:
+          path: data["pre-start.sh"]
+          pattern: "git clone.*comfyui-vllm-omni"

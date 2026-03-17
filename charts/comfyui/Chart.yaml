@@ -1,0 +1,10 @@
+apiVersion: v2
+name: comfyui
+description: Deploy ComfyUI on OpenShift with vLLM-Omni custom node support
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - comfyui
+  - openshift
+  - image-generation

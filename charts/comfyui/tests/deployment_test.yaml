@@ -1,0 +1,122 @@
+suite: Deployment
+templates:
+  - templates/deployment.yaml
+
+tests:
+  - it: should render a Deployment
+    asserts:
+      - isKind:
+          of: Deployment
+      - isAPIVersion:
+          of: apps/v1
+
+  - it: should use the correct name
+    release:
+      name: my-release
+    asserts:
+      - equal:
+          path: metadata.name
+          value: my-release-comfyui
+
+  - it: should use the default image
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: "yanwk/comfyui-boot:cpu"
+
+  - it: should expose port 8188
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].ports[0].containerPort
+          value: 8188
+
+  - it: should set CLI_ARGS
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CLI_ARGS
+            value: "--cpu"
+
+  - it: should not set VLLM_OMNI_URL by default
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: VLLM_OMNI_URL
+          any: true
+
+  - it: should set VLLM_OMNI_URL when configured
+    set:
+      vllmOmniUrl: http://vllm-omni:8080
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: VLLM_OMNI_URL
+            value: "http://vllm-omni:8080"
+
+  - it: should mount PVC at /root when persistence is enabled
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: data
+            mountPath: /root
+
+  - it: should mount pre-start script when custom nodes enabled
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: pre-start
+            mountPath: /root/user-scripts/pre-start.sh
+            subPath: pre-start.sh
+
+  - it: should not mount pre-start script when custom nodes disabled
+    set:
+      customNodes.vllmOmni.enabled: false
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: pre-start
+          any: true
+
+  - it: should not mount PVC when persistence is disabled
+    set:
+      persistence.enabled: false
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: data
+          any: true
+
+  - it: should set replica count
+    set:
+      replicas: 3
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 3
+
+  - it: should configure startup probe
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.httpGet.port
+          value: http
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.failureThreshold
+          value: 30
+
+  - it: should include selector labels
+    release:
+      name: my-release
+    asserts:
+      - equal:
+          path: spec.selector.matchLabels["app.kubernetes.io/name"]
+          value: comfyui
+      - equal:
+          path: spec.selector.matchLabels["app.kubernetes.io/instance"]
+          value: my-release
