@@ -23,7 +23,7 @@ export interface Instance {
 }
 
 function releaseName(username: string): string {
-  return `${config.helm.releasePrefix}${username}`;
+  return `${config.helm.releasePrefix}${username.toLowerCase()}`;
 }
 
 async function helm(...args: string[]): Promise<string> {
