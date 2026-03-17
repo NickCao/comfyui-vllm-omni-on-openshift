@@ -54,7 +54,17 @@ spec:
           volumeMounts:
             {{- if .Values.persistence.enabled }}
             - name: data
-              mountPath: /root
+              mountPath: /root/ComfyUI/custom_nodes
+              subPath: custom_nodes
+            - name: data
+              mountPath: /root/ComfyUI/input
+              subPath: input
+            - name: data
+              mountPath: /root/ComfyUI/output
+              subPath: output
+            - name: data
+              mountPath: /root/ComfyUI/user
+              subPath: user
             {{- end }}
             {{- if .Values.customNodes.vllmOmni.enabled }}
             - name: pre-start

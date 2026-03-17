@@ -56,13 +56,32 @@ tests:
             name: VLLM_OMNI_URL
             value: "http://vllm-omni:8080"
 
-  - it: should mount PVC at /root when persistence is enabled
+  - it: should mount PVC subpaths for persistent directories
     asserts:
       - contains:
           path: spec.template.spec.containers[0].volumeMounts
           content:
             name: data
-            mountPath: /root
+            mountPath: /root/ComfyUI/custom_nodes
+            subPath: custom_nodes
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: data
+            mountPath: /root/ComfyUI/output
+            subPath: output
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: data
+            mountPath: /root/ComfyUI/input
+            subPath: input
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: data
+            mountPath: /root/ComfyUI/user
+            subPath: user
 
   - it: should mount pre-start script when custom nodes enabled
     asserts:
