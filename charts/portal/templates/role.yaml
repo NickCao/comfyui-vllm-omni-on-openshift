@@ -5,24 +5,24 @@ metadata:
   labels:
     {{- include "portal.labels" . | nindent 4 }}
 rules:
-  # Helm needs to manage release secrets
+  # Helm release lifecycle (stored as secrets)
   - apiGroups: [""]
     resources: ["secrets"]
-    verbs: ["*"]
+    verbs: ["create", "get", "list", "update", "delete"]
   # ComfyUI chart resources
   - apiGroups: [""]
     resources: ["services", "configmaps", "persistentvolumeclaims", "serviceaccounts"]
-    verbs: ["*"]
+    verbs: ["create", "get", "list", "update", "delete"]
   # Pod status and log streaming for live dashboard
   - apiGroups: [""]
     resources: ["pods", "pods/log"]
     verbs: ["get", "list"]
   - apiGroups: ["apps"]
     resources: ["deployments"]
-    verbs: ["*"]
+    verbs: ["create", "get", "list", "update", "delete"]
   - apiGroups: ["route.openshift.io"]
     resources: ["routes"]
-    verbs: ["*"]
+    verbs: ["create", "get", "list", "update", "delete"]
   - apiGroups: ["rbac.authorization.k8s.io"]
     resources: ["roles", "rolebindings"]
-    verbs: ["*"]
+    verbs: ["create", "get", "list", "update", "delete", "bind", "escalate"]

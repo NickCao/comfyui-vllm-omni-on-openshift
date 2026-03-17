@@ -43,16 +43,16 @@ tests:
           content:
             apiGroups: ["route.openshift.io"]
             resources: ["routes"]
-            verbs: ["*"]
+            verbs: ["create", "get", "list", "update", "delete"]
 
-  - it: should grant secrets access for Helm
+  - it: should grant explicit verbs on secrets for Helm
     asserts:
       - contains:
           path: rules
           content:
             apiGroups: [""]
             resources: ["secrets"]
-            verbs: ["*"]
+            verbs: ["create", "get", "list", "update", "delete"]
 
 ---
 suite: RBAC - RoleBinding
