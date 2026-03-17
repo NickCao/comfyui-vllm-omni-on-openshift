@@ -46,8 +46,8 @@ jobs:
         run: npx tsc --noEmit
         working-directory: portal
 
-      - name: Run unit tests
-        run: npx vitest run
+      - name: Run unit tests with coverage
+        run: npx vitest run --coverage
         working-directory: portal
 
       - name: Build frontend
