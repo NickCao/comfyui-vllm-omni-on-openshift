@@ -6,6 +6,7 @@ import * as helm from "../services/helm.js";
 import { config } from "../config.js";
 
 const RELEASE_NAME_RE = /^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/;
+const MAX_SUFFIX_LENGTH = 30;
 
 /** Return the expected release name prefix for a given user. */
 function userPrefix(username: string): string {
@@ -42,6 +43,10 @@ router.post("/instances", async (req, res) => {
     const suffix = req.body?.name as string | undefined;
     if (suffix && !RELEASE_NAME_RE.test(suffix)) {
       res.status(400).json({ error: "Name must be lowercase alphanumeric with optional hyphens" });
+      return;
+    }
+    if (suffix && suffix.length > MAX_SUFFIX_LENGTH) {
+      res.status(400).json({ error: `Name must be at most ${MAX_SUFFIX_LENGTH} characters` });
       return;
     }
     const instance = await helm.createInstance(user.username, suffix);

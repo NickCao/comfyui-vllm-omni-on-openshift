@@ -198,6 +198,39 @@ describe("POST /api/instances", () => {
     expect(res.status).toHaveBeenCalledWith(400);
   });
 
+  it("should reject suffix exceeding 30 characters", async () => {
+    const handler = getRouteHandler(apiRoutes, "post", "/instances");
+    const req = mockReq({ body: { name: "a".repeat(31) } });
+    const res = mockRes();
+    await handler(req, res);
+
+    expect(helm.createInstance).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      error: "Name must be at most 30 characters",
+    });
+  });
+
+  it("should accept suffix of exactly 30 characters", async () => {
+    vi.mocked(helm.createInstance).mockResolvedValue({
+      name: "comfyui-alice-" + "a".repeat(30),
+      username: "alice",
+      status: "deployed",
+      updated: "",
+      routeUrl: "",
+      password: "",
+      pods: [],
+    });
+
+    const handler = getRouteHandler(apiRoutes, "post", "/instances");
+    const req = mockReq({ body: { name: "a".repeat(30) } });
+    const res = mockRes();
+    await handler(req, res);
+
+    expect(res.status).not.toHaveBeenCalledWith(400);
+    expect(helm.createInstance).toHaveBeenCalled();
+  });
+
   it("should return 500 when helm service throws", async () => {
     vi.mocked(helm.createInstance).mockRejectedValue(
       new Error("already exists")
