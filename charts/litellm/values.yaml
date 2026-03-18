@@ -1,8 +1,9 @@
 image: docker.litellm.ai/berriai/litellm:main-stable
 
+# Master key for API auth and admin UI login.
+masterKey: "sk-1234"
+
 # Admin UI credentials (accessible at /ui).
-# Note: LITELLM_MASTER_KEY is intentionally omitted so the API is open
-# to in-cluster callers (ComfyUI). The UI login uses these credentials.
 ui:
   username: admin
   password: admin

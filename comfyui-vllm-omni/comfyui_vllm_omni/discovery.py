@@ -2,17 +2,21 @@
 Discover vLLM model instances for ComfyUI.
 
 Queries the endpoint specified by the VLLM_API_BASE_URL environment
-variable (typically a vLLM Semantic Router) for available models via
-its /v1/models endpoint.
+variable (typically a LiteLLM Proxy) for available models via its
+/v1/models endpoint.
 """
 
 import json
 import os
-from typing import Dict, List
+from typing import Dict, List, Optional
 from urllib.request import Request, urlopen
 from urllib.error import URLError
 
 _DEFAULT_BASE_URL = "http://litellm:4000/v1"
+
+
+def _get_api_key() -> Optional[str]:
+    return os.environ.get("VLLM_API_KEY")
 
 
 def discover() -> Dict[str, str]:
@@ -27,6 +31,9 @@ def discover() -> Dict[str, str]:
 
     try:
         req = Request(models_url)
+        api_key = _get_api_key()
+        if api_key:
+            req.add_header("Authorization", f"Bearer {api_key}")
         with urlopen(req, timeout=5) as resp:
             data = json.loads(resp.read())
     except (URLError, OSError) as e:

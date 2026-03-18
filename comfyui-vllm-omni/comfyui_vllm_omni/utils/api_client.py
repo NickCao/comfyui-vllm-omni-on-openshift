@@ -8,6 +8,7 @@ Original source at https://github.com/dougbtv/comfyui-vllm-omni, distributed und
 
 import asyncio
 import json
+import os
 from typing import Any
 
 import aiohttp
@@ -61,6 +62,15 @@ async def url_bytes(session: aiohttp.ClientSession, url: str, verb: str = "get",
         raise RuntimeError(f"Network error connecting to vLLM-Omni at {url}: {e}")
 
 
+def _api_headers() -> dict[str, str]:
+    """Build request headers, including Authorization if VLLM_API_KEY is set."""
+    headers = {"Content-Type": "application/json"}
+    api_key = os.environ.get("VLLM_API_KEY")
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    return headers
+
+
 class VLLMOmniClient:
     def __init__(
         self, base_url: str, timeout: float | None = None, poll_interval: float = 5.0, max_poll_duration: float = 60 * 5
@@ -105,7 +115,7 @@ class VLLMOmniClient:
                 async with session.post(
                     url,
                     json=payload,
-                    headers={"Content-Type": "application/json"},
+                    headers=_api_headers(),
                 ) as response:
                     if not response.ok:
                         error_text = await response.text()
@@ -423,7 +433,7 @@ class VLLMOmniClient:
                 async with session.post(
                     url,
                     json=payload,
-                    headers={"Content-Type": "application/json"},
+                    headers=_api_headers(),
                 ) as response:
                     if not response.ok:
                         error_text = await response.text()
@@ -458,7 +468,7 @@ class VLLMOmniClient:
                 async with session.post(
                     url,
                     json=payload,
-                    headers={"Content-Type": "application/json"},
+                    headers=_api_headers(),
                 ) as response:
                     if not response.ok:
                         error_text = await response.text()
@@ -490,7 +500,7 @@ class VLLMOmniClient:
             try:
                 async with session.get(
                     url,
-                    headers={"Content-Type": "application/json"},
+                    headers=_api_headers(),
                 ) as response:
                     if not response.ok:
                         error_text = await response.text()

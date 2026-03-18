@@ -61,3 +61,5 @@ auth:
 extraEnv:
   - name: VLLM_API_BASE_URL
     value: "http://litellm:4000/v1"
+  - name: VLLM_API_KEY
+    value: "sk-1234"
