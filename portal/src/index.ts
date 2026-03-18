@@ -27,7 +27,16 @@ app.use(
   })
 );
 
-passport.serializeUser((user, done) => done(null, user));
+interface SessionUser {
+  username: string;
+  displayName: string;
+  photos: { value: string }[];
+}
+
+passport.serializeUser((user: Express.User, done) => {
+  const { username, displayName, photos } = user as SessionUser;
+  done(null, { username, displayName, photos: photos?.slice(0, 1) ?? [] });
+});
 passport.deserializeUser((obj: Express.User, done) => done(null, obj));
 
 if (config.github.clientID) {
