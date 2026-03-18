@@ -11,13 +11,13 @@ Users sign in with GitHub, create their own ComfyUI instances through a web port
   ┌──────────────────────────────────────────────────────┐
   │                                                      │
   │  ┌──────────────────────┐                            │
-  │  │  Self-Service Portal │◄── GitHub OAuth login      │
+  │  │  Self-Service Portal │<── GitHub OAuth login      │
   │  │  (Node.js + React)   │                            │
   │  │                      │                            │
   │  │  Manages ComfyUI     │                            │
   │  │  instances via Helm  │                            │
   │  └──────────┬───────────┘                            │
-  │             │ helm install/uninstall                  │
+  │             │ helm install/uninstall                 │
   │  ┌──────────▼───────────────────────────────────┐    │
   │  │  Per-User ComfyUI Deployments                │    │
   │  │                                              │    │
@@ -26,9 +26,9 @@ Users sign in with GitHub, create their own ComfyUI instances through a web port
   │  │  │ nginx basic auth │ │ nginx basic auth │   │    │
   │  │  │ Route + PVC      │ │ Route + PVC      │   │    │
   │  │  └────────┬─────────┘ └────────┬─────────┘   │    │
-  │  └───────────┼────────────────────┼──────────────┘    │
-  │              └────────┬───────────┘                   │
-  │                       │ K8s API discovery             │
+  │  └───────────┼────────────────────┼─────────────┘    │
+  │              └────────┬───────────┘                  │
+  │                       │ K8s API discovery            │
   │  ┌────────────────────▼───────────────────┐          │
   │  │  KServe InferenceService               │          │
   │  │  vLLM-Omni (GPU)                       │          │
@@ -168,8 +168,8 @@ podman push ghcr.io/your-org/comfyui-portal:latest
 
 A GitHub Actions pipeline runs on every push and PR:
 
-1. **helm-tests** -- runs all 97 chart unit tests (vllm-omni: 37, comfyui: 30, portal: 30)
-2. **portal-typecheck** -- TypeScript type-check and Vite build
+1. **helm-tests** -- runs all 124 chart unit tests (vllm-omni: 37, comfyui: 57, portal: 30)
+2. **portal-typecheck** -- TypeScript type-check, Vitest unit tests (52 tests) with coverage, and Vite build
 3. **portal-image** -- builds and pushes to `ghcr.io` (master only)
 
 To run tests locally:
@@ -178,6 +178,7 @@ To run tests locally:
 helm unittest charts/vllm-omni/
 helm unittest charts/comfyui/
 helm unittest charts/portal/
+cd portal && npx vitest run --coverage
 ```
 
 ## Project Structure
