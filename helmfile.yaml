@@ -5,11 +5,11 @@ releases:
     values:
       - values/vllm-omni.yaml
 
-  - name: vllm-qwen3-0.6b
+  - name: vllm-qwen3-06b
     namespace: comfyui-vllm-omni
     chart: ./charts/vllm-omni
     values:
-      - values/vllm-qwen3-0.6b.yaml
+      - values/vllm-qwen3-06b.yaml
 
   - name: portal
     namespace: comfyui-vllm-omni

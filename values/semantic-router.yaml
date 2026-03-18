@@ -22,7 +22,7 @@ config:
         provider_model_id: Qwen/Qwen3-0.6B
         backend_refs:
           - name: primary
-            endpoint: vllm-qwen3-0.6b-vllm-omni-predictor:8080
+            endpoint: vllm-qwen3-06b-vllm-omni-predictor:8080
             protocol: http
             weight: 100
   routing:
