@@ -7,6 +7,8 @@ import { config } from "../config.js";
 
 const RELEASE_NAME_RE = /^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/;
 const MAX_SUFFIX_LENGTH = 30;
+/** Maximum duration for a log streaming SSE connection (30 minutes). */
+const LOG_STREAM_TIMEOUT_MS = 30 * 60 * 1000;
 
 /** Return the expected release name prefix for a given user. */
 function userPrefix(username: string): string {
@@ -104,6 +106,12 @@ router.get("/instances/:name/logs", (req, res) => {
     "--namespace", config.helm.namespace,
   ]);
 
+  const timeout = setTimeout(() => {
+    proc.kill();
+    res.write("event: close\ndata: stream timeout\n\n");
+    res.end();
+  }, LOG_STREAM_TIMEOUT_MS);
+
   proc.stdout.on("data", (chunk: Buffer) => {
     for (const line of chunk.toString().split("\n")) {
       if (line) res.write(`data: ${line}\n\n`);
@@ -117,11 +125,13 @@ router.get("/instances/:name/logs", (req, res) => {
   });
 
   proc.on("close", () => {
+    clearTimeout(timeout);
     res.write("event: close\ndata: stream ended\n\n");
     res.end();
   });
 
   req.on("close", () => {
+    clearTimeout(timeout);
     proc.kill();
   });
 });
