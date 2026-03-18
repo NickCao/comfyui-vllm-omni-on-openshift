@@ -2,7 +2,7 @@
 
 A self-service platform for deploying [ComfyUI](https://github.com/comfyanonymous/ComfyUI) with [vLLM-Omni](https://docs.vllm.ai/projects/vllm-omni/) image generation on OpenShift.
 
-Users sign in with GitHub, create their own ComfyUI instances through a web portal, and generate images using models served by vLLM-Omni via a [vLLM Semantic Router](https://github.com/vllm-project/semantic-router).
+Users sign in with GitHub, create their own ComfyUI instances through a web portal, and generate images using models served by vLLM-Omni via a [LiteLLM Proxy](https://docs.litellm.ai/docs/simple_proxy) gateway.
 
 ## Architecture
 
@@ -30,17 +30,16 @@ Users sign in with GitHub, create their own ComfyUI instances through a web port
   │              └────────┬───────────┘                  │
   │                       │ OpenAI-compatible API        │
   │  ┌────────────────────▼───────────────────┐          │
-  │  │  vLLM Semantic Router (CPU)            │          │
-  │  │  Routes requests to vLLM backends      │          │
-  │  │  Semantic caching, observability       │          │
-  │  └────────────────────┬───────────────────┘          │
-  │                       │                              │
-  │  ┌────────────────────▼───────────────────┐          │
-  │  │  KServe InferenceService               │          │
-  │  │  vLLM-Omni (GPU)                       │          │
-  │  │  e.g. Tongyi-MAI/Z-Image-Turbo         │          │
-  │  │  PVC: model cache                      │          │
-  │  └────────────────────────────────────────┘          │
+  │  │  LiteLLM Proxy                         │          │
+  │  │  Routes requests by model name         │          │
+  │  │  Load balancing, retries, fallbacks    │          │
+  │  └────┬───────────────────────────┬───────┘          │
+  │       │                           │                  │
+  │  ┌────▼───────────────────┐  ┌────▼──────────────┐   │
+  │  │  KServe InferenceService│  │  KServe ISVC      │   │
+  │  │  vLLM-Omni (GPU)       │  │  vLLM CPU          │   │
+  │  │  Z-Image-Turbo         │  │  Qwen3-0.6B        │   │
+  │  └────────────────────────┘  └────────────────────┘   │
   └──────────────────────────────────────────────────────┘
 ```
 
@@ -50,24 +49,25 @@ Users sign in with GitHub, create their own ComfyUI instances through a web port
 
 | Chart | Description |
 |-------|-------------|
-| `charts/vllm-omni` | Deploys vLLM-Omni as a KServe InferenceService with GPU resources and PVC model cache |
-| `charts/comfyui` | Deploys a per-user ComfyUI instance with nginx basic auth sidecar, PVC persistence, and OpenShift Route. `VLLM_API_BASE_URL` points at the semantic router for model discovery |
+| `charts/vllm-omni` | Deploys a vLLM model as a KServe InferenceService with GPU or CPU resources and PVC model cache |
+| `charts/comfyui` | Deploys a per-user ComfyUI instance with nginx basic auth sidecar, PVC persistence, and OpenShift Route. `VLLM_API_BASE_URL` points at the LiteLLM Proxy for model discovery |
 | `charts/portal` | Deploys the self-service portal with GitHub OAuth, RBAC for managing Helm releases, and log streaming |
+| `charts/litellm` | Deploys [LiteLLM Proxy](https://docs.litellm.ai/docs/simple_proxy) as an OpenAI-compatible gateway that routes requests by model name to the correct vLLM backend |
 
-### Semantic Router (`semantic-router/`)
+### LiteLLM Proxy (`charts/litellm/`)
 
-A [vLLM Semantic Router](https://github.com/vllm-project/semantic-router) instance (included as a git submodule) that sits between ComfyUI and the vLLM-Omni backend. It provides:
+An [LiteLLM Proxy](https://docs.litellm.ai/docs/simple_proxy) instance that sits between ComfyUI and the vLLM backends. It provides:
 
-- **OpenAI-compatible API proxy** -- ComfyUI nodes send requests to the router instead of directly to KServe predictor services
-- **Semantic caching** -- deduplicates similar requests
-- **Observability** -- metrics on port 9190
-- **Extensible routing** -- signals and decisions can be added to route requests based on keywords or semantic classification
+- **Model-based routing** -- routes requests to the correct backend based on the `model` field
+- **OpenAI-compatible API** -- supports `/v1/chat/completions`, `/v1/images/generations`, `/v1/models`, and more
+- **Load balancing** -- multiple routing strategies (round-robin, least-busy, latency-based)
+- **Retries and fallbacks** -- automatic retry with exponential backoff
 
-Configured via `values/semantic-router.yaml` using the [canonical v0.3 contract](https://vllm-semantic-router.com/docs/installation/configuration#helm).
+Configured via `values/litellm.yaml` using the [LiteLLM config format](https://docs.litellm.ai/docs/proxy/configs).
 
 ### Custom Nodes (`comfyui-vllm-omni/`)
 
-Forked ComfyUI custom nodes that integrate with vLLM-Omni. On startup, the nodes query the semantic router's `/v1/models` endpoint for available models and populate a dropdown. All generation requests are sent through the router. The endpoint is configured via the `VLLM_API_BASE_URL` environment variable (defaults to `http://semantic-router:8080/v1`).
+Forked ComfyUI custom nodes that integrate with vLLM-Omni. On startup, the nodes query the LiteLLM Proxy's `/v1/models` endpoint for available models and populate a dropdown. All generation requests are sent through the proxy. The endpoint is configured via the `VLLM_API_BASE_URL` environment variable (defaults to `http://litellm:4000/v1`).
 
 ### Portal (`portal/`)
 
@@ -82,20 +82,16 @@ Node.js + React web application:
 ## Prerequisites
 
 - OpenShift 4.17+
-- NVIDIA GPU Operator installed and configured
+- NVIDIA GPU Operator installed and configured (for GPU models)
 - KServe installed (via OpenShift AI or standalone)
 - Helm 3.x
 - Helmfile
-- A GitHub OAuth App (for the portal)
 
 ## Quick Start
 
-### 1. Deploy vLLM-Omni, the Semantic Router, and the Portal
+### 1. Deploy vLLM backends, LiteLLM Proxy, and the Portal
 
 ```bash
-# Initialize the semantic-router submodule
-git submodule update --init
-
 # Edit values for your cluster
 cp values/portal.yaml values/portal.local.yaml
 # Set: github.clientID, github.clientSecret, github.callbackURL,
@@ -117,6 +113,12 @@ releases:
     values:
       - values/vllm-omni.yaml
 
+  - name: vllm-qwen3-06b
+    namespace: my-namespace
+    chart: ./charts/vllm-omni
+    values:
+      - values/vllm-qwen3-06b.yaml
+
   - name: portal
     namespace: my-namespace
     chart: ./charts/portal
@@ -124,11 +126,11 @@ releases:
       - values/portal.yaml
       - values/portal.local.yaml
 
-  - name: semantic-router
+  - name: litellm
     namespace: my-namespace
-    chart: ./semantic-router/deploy/helm/semantic-router
+    chart: ./charts/litellm
     values:
-      - values/semantic-router.yaml
+      - values/litellm.yaml
 ```
 
 ```bash
@@ -154,7 +156,8 @@ podman push ghcr.io/your-org/comfyui-portal:latest
 | `image.tag` | `v0.16.0` | Image tag |
 | `model.name` | `Tongyi-MAI/Z-Image-Turbo` | Model to serve (positional arg) |
 | `model.extraArgs` | `[]` | Additional vLLM args |
-| `resources.requests.nvidia.com/gpu` | `"1"` | GPU request |
+| `resources.requests.cpu` | `"4"` | CPU request |
+| `resources.requests.memory` | `16Gi` | Memory request |
 | `modelCache.size` | `50Gi` | PVC size for model weights |
 | `inferenceService.deploymentMode` | `RawDeployment` | `RawDeployment` or `Serverless` |
 | `huggingface.token` | `""` | HF token for gated models |
@@ -172,7 +175,28 @@ podman push ghcr.io/your-org/comfyui-portal:latest
 | `auth.enabled` | `true` | Enable HTTP basic auth via nginx sidecar |
 | `auth.username` | `comfyui` | Basic auth username |
 | `auth.password` | `""` | Basic auth password (portal generates this automatically) |
-| `extraEnv[0].value` | `http://semantic-router:8080/v1` | Semantic router endpoint (`VLLM_API_BASE_URL`) |
+| `extraEnv[0].value` | `http://litellm:4000/v1` | LiteLLM Proxy endpoint (`VLLM_API_BASE_URL`) |
+
+### litellm
+
+Configured via `values/litellm.yaml` using the [LiteLLM config format](https://docs.litellm.ai/docs/proxy/configs).
+
+```yaml
+config:
+  model_list:
+    - model_name: Tongyi-MAI/Z-Image-Turbo
+      litellm_params:
+        model: openai/Tongyi-MAI/Z-Image-Turbo
+        api_base: http://vllm-omni-z-image-turbo-predictor:8080/v1
+        api_key: none
+    - model_name: Qwen/Qwen3-0.6B
+      litellm_params:
+        model: openai/Qwen/Qwen3-0.6B
+        api_base: http://vllm-qwen3-06b-vllm-omni-predictor:8080/v1
+        api_key: none
+```
+
+Each entry in `model_list` maps a `model_name` (used in API requests) to a backend via `api_base`. The `openai/` prefix tells LiteLLM to use the OpenAI-compatible provider.
 
 ### portal
 
@@ -185,18 +209,6 @@ podman push ghcr.io/your-org/comfyui-portal:latest
 | `allowedGithubUsers` | `""` | Comma-separated whitelist (empty = deny all) |
 | `helm.chartPath` | `/app/charts/comfyui` | Path to comfyui chart in container |
 
-### semantic-router
-
-Configured via `values/semantic-router.yaml` using the [canonical v0.3 contract](https://vllm-semantic-router.com/docs/installation/configuration#helm). The key settings are:
-
-| Config Path | Description |
-|-------------|-------------|
-| `config.providers.models[].backend_refs[].endpoint` | vLLM-Omni predictor service endpoint |
-| `config.providers.defaults.default_model` | Model name used when no routing decision matches |
-| `config.routing.signals` | Keyword/semantic matching rules (optional) |
-| `config.routing.decisions` | Routing rules referencing signals (optional) |
-| `config.global.services.observability.metrics.enabled` | Enable Prometheus metrics |
-
 ## Known Limitations
 
 - **Model discovery cache does not auto-refresh.** The ComfyUI custom nodes query available models once at startup and cache the result. If models change after ComfyUI is already running, the pod must be restarted to pick up the new list.
@@ -207,8 +219,8 @@ Configured via `values/semantic-router.yaml` using the [canonical v0.3 contract]
 
 A GitHub Actions pipeline runs on every push and PR:
 
-1. **helm-tests** -- runs chart unit tests (vllm-omni: 37, comfyui, portal: 30)
-2. **portal-typecheck** -- TypeScript type-check, Vitest unit tests (52 tests) with coverage, and Vite build
+1. **helm-tests** -- runs chart unit tests (vllm-omni, comfyui, portal)
+2. **portal-typecheck** -- TypeScript type-check, Vitest unit tests with coverage, and Vite build
 3. **portal-image** -- builds and pushes to `ghcr.io` (master only)
 
 To run tests locally:
@@ -227,9 +239,9 @@ cd portal && npx vitest run --coverage
 ├── charts/
 │   ├── vllm-omni/          # KServe InferenceService chart
 │   ├── comfyui/             # Per-user ComfyUI chart
-│   └── portal/              # Self-service portal chart
+│   ├── portal/              # Self-service portal chart
+│   └── litellm/             # LiteLLM Proxy chart
 ├── comfyui-vllm-omni/       # Forked custom nodes with model discovery
-├── semantic-router/         # vLLM Semantic Router (git submodule)
 ├── portal/                  # Portal app source (Express + React)
 │   ├── Dockerfile
 │   └── src/
@@ -238,6 +250,10 @@ cd portal && npx vitest run --coverage
 │       ├── services/helm.ts # Helm CLI wrapper
 │       └── client/App.tsx   # React dashboard
 ├── values/                  # Deployment-specific overrides
+│   ├── vllm-omni.yaml       # GPU model (Z-Image-Turbo)
+│   ├── vllm-qwen3-06b.yaml  # CPU model (Qwen3-0.6B)
+│   ├── litellm.yaml         # LiteLLM Proxy model routing config
+│   └── portal.yaml          # Portal config
 ├── helmfile.yaml            # Production helmfile
 └── helmfile.local.yaml      # Local override (gitignored)
 ```

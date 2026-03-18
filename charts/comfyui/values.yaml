@@ -56,7 +56,7 @@ auth:
   password: ""
 
 # Additional environment variables.
-# VLLM_API_BASE_URL points ComfyUI at the semantic router for model
+# VLLM_API_BASE_URL points ComfyUI at the LiteLLM Proxy for model
 # discovery and API requests.
 extraEnv:
   - name: VLLM_API_BASE_URL
