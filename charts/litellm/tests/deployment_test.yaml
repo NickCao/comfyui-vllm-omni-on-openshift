@@ -1,0 +1,119 @@
+suite: Deployment
+templates:
+  - templates/deployment.yaml
+  # ConfigMap must be included because the deployment template references
+  # it for the config checksum annotation.
+  - templates/configmap.yaml
+
+tests:
+  - it: should render a Deployment
+    asserts:
+      - isKind:
+          of: Deployment
+        template: templates/deployment.yaml
+
+  - it: should use the release name
+    asserts:
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME
+        template: templates/deployment.yaml
+
+  - it: should use the configured image
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.litellm.ai/berriai/litellm:main-stable
+        template: templates/deployment.yaml
+
+  - it: should use a custom image when set
+    set:
+      image: my-registry/litellm:v1.0
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: my-registry/litellm:v1.0
+        template: templates/deployment.yaml
+
+  - it: should expose port 4000
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: http
+            containerPort: 4000
+            protocol: TCP
+        template: templates/deployment.yaml
+
+  - it: should mount config volume
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: config
+            mountPath: /app/config.yaml
+            subPath: config.yaml
+            readOnly: true
+        template: templates/deployment.yaml
+
+  - it: should have readiness and liveness probes
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /health/readiness
+        template: templates/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.path
+          value: /health/liveliness
+        template: templates/deployment.yaml
+
+  - it: should set resource requests and limits
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.cpu
+          value: 200m
+        template: templates/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.memory
+          value: 512Mi
+        template: templates/deployment.yaml
+
+  - it: should apply custom resources
+    set:
+      resources:
+        requests:
+          cpu: 500m
+          memory: 1Gi
+        limits:
+          cpu: "2"
+          memory: 2Gi
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources.requests.cpu
+          value: 500m
+        template: templates/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].resources.limits.memory
+          value: 2Gi
+        template: templates/deployment.yaml
+
+  - it: should include config checksum annotation for rollout on config change
+    asserts:
+      - isNotNull:
+          path: spec.template.metadata.annotations["checksum/config"]
+        template: templates/deployment.yaml
+
+  - it: should disable admin UI and set local cost map
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LITELLM_LOCAL_MODEL_COST_MAP
+            value: "True"
+        template: templates/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DISABLE_ADMIN_UI
+            value: "True"
+        template: templates/deployment.yaml

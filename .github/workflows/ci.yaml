@@ -24,6 +24,9 @@ jobs:
       - name: Run comfyui chart tests
         run: helm unittest charts/comfyui/
 
+      - name: Run litellm chart tests
+        run: helm unittest charts/litellm/
+
       - name: Run portal chart tests
         run: helm unittest charts/portal/
 
