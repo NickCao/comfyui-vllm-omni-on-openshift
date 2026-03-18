@@ -1,13 +1,5 @@
 image: docker.litellm.ai/berriai/litellm:main-stable
 
-# Master key for API auth and admin UI login.
-masterKey: "sk-1234"
-
-# Admin UI credentials (accessible at /ui).
-ui:
-  username: admin
-  password: admin
-
 # LiteLLM proxy config inlined into a ConfigMap.
 # See: https://docs.litellm.ai/docs/proxy/configs
 config:
