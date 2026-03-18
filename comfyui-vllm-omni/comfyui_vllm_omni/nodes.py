@@ -17,7 +17,7 @@ from .utils.validators import (
     add_sampling_parameters_to_stage,
     validate_model_and_sampling_params_types,
 )
-from .k8s_discovery import get_model_names, get_url
+from .discovery import get_model_names, get_url
 
 logger = get_logger(__name__)
 

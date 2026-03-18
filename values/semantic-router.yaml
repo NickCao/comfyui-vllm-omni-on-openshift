@@ -1,0 +1,42 @@
+# Semantic Router configuration using the canonical v0.3 contract.
+# See: https://vllm-semantic-router.com/docs/installation/configuration#helm
+config:
+  version: v0.3
+  listeners:
+    - name: http-8080
+      address: 0.0.0.0
+      port: 8080
+      timeout: 300s
+  providers:
+    defaults:
+      default_model: z-image-turbo
+    models:
+      - name: z-image-turbo
+        provider_model_id: Tongyi-MAI/Z-Image-Turbo
+        backend_refs:
+          - name: primary
+            endpoint: vllm-omni-z-image-turbo-predictor:8080
+            protocol: http
+            weight: 100
+      - name: qwen3-0.6b
+        provider_model_id: Qwen/Qwen3-0.6B
+        backend_refs:
+          - name: primary
+            endpoint: vllm-qwen3-0.6b-vllm-omni-predictor:8080
+            protocol: http
+            weight: 100
+  routing:
+    modelCards:
+      - name: z-image-turbo
+        modality: image
+        capabilities: [image-generation, image-editing]
+      - name: qwen3-0.6b
+        modality: text
+        capabilities: [chat, reasoning]
+  global:
+    router:
+      config_source: file
+    services:
+      observability:
+        metrics:
+          enabled: true

@@ -5,8 +5,20 @@ releases:
     values:
       - values/vllm-omni.yaml
 
+  - name: vllm-qwen3-0.6b
+    namespace: comfyui-vllm-omni
+    chart: ./charts/vllm-omni
+    values:
+      - values/vllm-qwen3-0.6b.yaml
+
   - name: portal
     namespace: comfyui-vllm-omni
     chart: ./charts/portal
     values:
       - values/portal.yaml
+
+  - name: semantic-router
+    namespace: comfyui-vllm-omni
+    chart: ./semantic-router/deploy/helm/semantic-router
+    values:
+      - values/semantic-router.yaml

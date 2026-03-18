@@ -19,7 +19,7 @@ customNodes:
     # Official vLLM-Omni custom nodes
     repository: https://github.com/vllm-project/vllm-omni.git
     path: apps/ComfyUI-vLLM-Omni
-    # K8s discovery patch from this project
+    # Model discovery patch from this project
     patchRepository: https://github.com/NickCao/comfyui-vllm-omni-on-openshift.git
     patchPath: comfyui-vllm-omni/comfyui_vllm_omni
 
@@ -56,4 +56,8 @@ auth:
   password: ""
 
 # Additional environment variables.
-extraEnv: []
+# VLLM_API_BASE_URL points ComfyUI at the semantic router for model
+# discovery and API requests.
+extraEnv:
+  - name: VLLM_API_BASE_URL
+    value: "http://semantic-router:8080/v1"

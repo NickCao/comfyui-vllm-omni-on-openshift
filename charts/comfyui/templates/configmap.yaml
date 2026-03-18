@@ -19,7 +19,7 @@ data:
     mv "$TMPDIR"/{{ .Values.customNodes.vllmOmni.path | quote }} "$CUSTOM_NODES_DIR"
     rm -rf "$TMPDIR"
 
-    echo "Applying K8s discovery patch..."
+    echo "Applying model discovery patch..."
     TMPDIR=$(mktemp -d)
     git clone --depth 1 --filter=blob:none --sparse {{ .Values.customNodes.vllmOmni.patchRepository | quote }} "$TMPDIR"
     git -C "$TMPDIR" sparse-checkout set {{ .Values.customNodes.vllmOmni.patchPath | quote }}

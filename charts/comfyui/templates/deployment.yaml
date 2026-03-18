@@ -16,7 +16,6 @@ spec:
       labels:
         {{- include "comfyui.selectorLabels" . | nindent 8 }}
     spec:
-      serviceAccountName: {{ include "comfyui.fullname" . }}
       {{- if .Values.customNodes.vllmOmni.enabled }}
       initContainers:
         - name: setup-scripts

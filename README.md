@@ -2,7 +2,7 @@
 
 A self-service platform for deploying [ComfyUI](https://github.com/comfyanonymous/ComfyUI) with [vLLM-Omni](https://docs.vllm.ai/projects/vllm-omni/) image generation on OpenShift.
 
-Users sign in with GitHub, create their own ComfyUI instances through a web portal, and generate images using models served by vLLM-Omni via KServe.
+Users sign in with GitHub, create their own ComfyUI instances through a web portal, and generate images using models served by vLLM-Omni via a [vLLM Semantic Router](https://github.com/vllm-project/semantic-router).
 
 ## Architecture
 
@@ -28,7 +28,13 @@ Users sign in with GitHub, create their own ComfyUI instances through a web port
   │  │  └────────┬─────────┘ └────────┬─────────┘   │    │
   │  └───────────┼────────────────────┼─────────────┘    │
   │              └────────┬───────────┘                  │
-  │                       │ K8s API discovery            │
+  │                       │ OpenAI-compatible API        │
+  │  ┌────────────────────▼───────────────────┐          │
+  │  │  vLLM Semantic Router (CPU)            │          │
+  │  │  Routes requests to vLLM backends      │          │
+  │  │  Semantic caching, observability       │          │
+  │  └────────────────────┬───────────────────┘          │
+  │                       │                              │
   │  ┌────────────────────▼───────────────────┐          │
   │  │  KServe InferenceService               │          │
   │  │  vLLM-Omni (GPU)                       │          │
@@ -45,12 +51,23 @@ Users sign in with GitHub, create their own ComfyUI instances through a web port
 | Chart | Description |
 |-------|-------------|
 | `charts/vllm-omni` | Deploys vLLM-Omni as a KServe InferenceService with GPU resources and PVC model cache |
-| `charts/comfyui` | Deploys a ComfyUI instance with nginx basic auth sidecar, PVC persistence, OpenShift Route, and RBAC for model discovery |
+| `charts/comfyui` | Deploys a per-user ComfyUI instance with nginx basic auth sidecar, PVC persistence, and OpenShift Route. `VLLM_API_BASE_URL` points at the semantic router for model discovery |
 | `charts/portal` | Deploys the self-service portal with GitHub OAuth, RBAC for managing Helm releases, and log streaming |
+
+### Semantic Router (`semantic-router/`)
+
+A [vLLM Semantic Router](https://github.com/vllm-project/semantic-router) instance (included as a git submodule) that sits between ComfyUI and the vLLM-Omni backend. It provides:
+
+- **OpenAI-compatible API proxy** -- ComfyUI nodes send requests to the router instead of directly to KServe predictor services
+- **Semantic caching** -- deduplicates similar requests
+- **Observability** -- metrics on port 9190
+- **Extensible routing** -- signals and decisions can be added to route requests based on keywords or semantic classification
+
+Configured via `values/semantic-router.yaml` using the [canonical v0.3 contract](https://vllm-semantic-router.com/docs/installation/configuration#helm).
 
 ### Custom Nodes (`comfyui-vllm-omni/`)
 
-Forked ComfyUI custom nodes that integrate with vLLM-Omni. Key addition: **K8s-based model discovery** -- on startup, nodes query the KServe API for `InferenceService` resources and populate a dropdown with available model names (e.g. `Tongyi-MAI/Z-Image-Turbo`) instead of requiring users to manually enter service URLs.
+Forked ComfyUI custom nodes that integrate with vLLM-Omni. On startup, the nodes query the semantic router's `/v1/models` endpoint for available models and populate a dropdown. All generation requests are sent through the router. The endpoint is configured via the `VLLM_API_BASE_URL` environment variable (defaults to `http://semantic-router:8080/v1`).
 
 ### Portal (`portal/`)
 
@@ -73,9 +90,12 @@ Node.js + React web application:
 
 ## Quick Start
 
-### 1. Deploy vLLM-Omni and the Portal
+### 1. Deploy vLLM-Omni, the Semantic Router, and the Portal
 
 ```bash
+# Initialize the semantic-router submodule
+git submodule update --init
+
 # Edit values for your cluster
 cp values/portal.yaml values/portal.local.yaml
 # Set: github.clientID, github.clientSecret, github.callbackURL,
@@ -103,6 +123,12 @@ releases:
     values:
       - values/portal.yaml
       - values/portal.local.yaml
+
+  - name: semantic-router
+    namespace: my-namespace
+    chart: ./semantic-router/deploy/helm/semantic-router
+    values:
+      - values/semantic-router.yaml
 ```
 
 ```bash
@@ -146,6 +172,7 @@ podman push ghcr.io/your-org/comfyui-portal:latest
 | `auth.enabled` | `true` | Enable HTTP basic auth via nginx sidecar |
 | `auth.username` | `comfyui` | Basic auth username |
 | `auth.password` | `""` | Basic auth password (portal generates this automatically) |
+| `extraEnv[0].value` | `http://semantic-router:8080/v1` | Semantic router endpoint (`VLLM_API_BASE_URL`) |
 
 ### portal
 
@@ -158,9 +185,21 @@ podman push ghcr.io/your-org/comfyui-portal:latest
 | `allowedGithubUsers` | `""` | Comma-separated whitelist (empty = deny all) |
 | `helm.chartPath` | `/app/charts/comfyui` | Path to comfyui chart in container |
 
+### semantic-router
+
+Configured via `values/semantic-router.yaml` using the [canonical v0.3 contract](https://vllm-semantic-router.com/docs/installation/configuration#helm). The key settings are:
+
+| Config Path | Description |
+|-------------|-------------|
+| `config.providers.models[].backend_refs[].endpoint` | vLLM-Omni predictor service endpoint |
+| `config.providers.defaults.default_model` | Model name used when no routing decision matches |
+| `config.routing.signals` | Keyword/semantic matching rules (optional) |
+| `config.routing.decisions` | Routing rules referencing signals (optional) |
+| `config.global.services.observability.metrics.enabled` | Enable Prometheus metrics |
+
 ## Known Limitations
 
-- **Model discovery cache does not auto-refresh.** The ComfyUI custom nodes query the K8s API for available InferenceService models once at startup and cache the result. If a new InferenceService is added after ComfyUI is already running, the model will not appear in the dropdown until the ComfyUI pod is restarted.
+- **Model discovery cache does not auto-refresh.** The ComfyUI custom nodes query available models once at startup and cache the result. If models change after ComfyUI is already running, the pod must be restarted to pick up the new list.
 
 - **Portal sessions are stored in-memory.** The Express session store is not backed by persistent storage. All user sessions are lost when the portal pod restarts (e.g. during a redeployment), requiring users to sign in again.
 
@@ -168,7 +207,7 @@ podman push ghcr.io/your-org/comfyui-portal:latest
 
 A GitHub Actions pipeline runs on every push and PR:
 
-1. **helm-tests** -- runs all 124 chart unit tests (vllm-omni: 37, comfyui: 57, portal: 30)
+1. **helm-tests** -- runs chart unit tests (vllm-omni: 37, comfyui, portal: 30)
 2. **portal-typecheck** -- TypeScript type-check, Vitest unit tests (52 tests) with coverage, and Vite build
 3. **portal-image** -- builds and pushes to `ghcr.io` (master only)
 
@@ -189,7 +228,8 @@ cd portal && npx vitest run --coverage
 │   ├── vllm-omni/          # KServe InferenceService chart
 │   ├── comfyui/             # Per-user ComfyUI chart
 │   └── portal/              # Self-service portal chart
-├── comfyui-vllm-omni/       # Forked custom nodes with K8s discovery
+├── comfyui-vllm-omni/       # Forked custom nodes with model discovery
+├── semantic-router/         # vLLM Semantic Router (git submodule)
 ├── portal/                  # Portal app source (Express + React)
 │   ├── Dockerfile
 │   └── src/
