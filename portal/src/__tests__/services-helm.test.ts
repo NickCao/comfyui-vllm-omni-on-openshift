@@ -29,7 +29,7 @@ const mockExecFile = vi.mocked(execFile);
  */
 function mockExecSuccess(command: string, argsMatch: string[], stdout: string) {
   mockExecFile.mockImplementation(
-    ((cmd: string, args: string[], cb: Function) => {
+    ((cmd: string, args: string[], opts: unknown, cb: Function) => {
       if (cmd === command && argsMatch.every((a) => args.includes(a))) {
         cb(null, { stdout });
       } else {
@@ -44,7 +44,7 @@ function mockExecSuccess(command: string, argsMatch: string[], stdout: string) {
  */
 function mockExecMulti(handlers: { cmd: string; match: string[]; stdout: string }[]) {
   mockExecFile.mockImplementation(
-    ((cmd: string, args: string[], cb: Function) => {
+    ((cmd: string, args: string[], opts: unknown, cb: Function) => {
       for (const h of handlers) {
         if (cmd === h.cmd && h.match.every((a) => args.includes(a))) {
           cb(null, { stdout: h.stdout });
@@ -142,7 +142,7 @@ describe("listInstances", () => {
 
     // helm list succeeds, but all kubectl calls fail
     mockExecFile.mockImplementation(
-      ((cmd: string, _args: string[], cb: Function) => {
+      ((cmd: string, _args: string[], _opts: unknown, cb: Function) => {
         if (cmd === "helm") {
           cb(null, { stdout: helmListOutput });
         } else {
@@ -219,7 +219,7 @@ describe("createInstance", () => {
 describe("deleteInstance", () => {
   it("should run helm uninstall with correct args", async () => {
     mockExecFile.mockImplementation(
-      ((_cmd: string, _args: string[], cb: Function) => {
+      ((_cmd: string, _args: string[], _opts: unknown, cb: Function) => {
         cb(null, { stdout: "" });
       }) as any
     );
@@ -237,7 +237,7 @@ describe("deleteInstance", () => {
 
   it("should propagate errors from helm uninstall", async () => {
     mockExecFile.mockImplementation(
-      ((_cmd: string, _args: string[], cb: Function) => {
+      ((_cmd: string, _args: string[], _opts: unknown, cb: Function) => {
         cb(new Error("release not found"));
       }) as any
     );

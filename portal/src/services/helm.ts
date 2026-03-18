@@ -5,6 +5,11 @@ import { config } from "../config.js";
 
 const exec = promisify(execFile);
 
+/** Timeout for kubectl info queries (pods, routes, secrets). */
+const KUBECTL_TIMEOUT_MS = 15_000;
+/** Timeout for helm operations (install, uninstall, list). */
+const HELM_TIMEOUT_MS = 120_000;
+
 export interface HelmRelease {
   name: string;
   namespace: string;
@@ -39,7 +44,7 @@ function releaseName(username: string, suffix?: string): string {
 }
 
 async function helm(...args: string[]): Promise<string> {
-  const { stdout } = await exec("helm", args);
+  const { stdout } = await exec("helm", args, { timeout: HELM_TIMEOUT_MS });
   return stdout;
 }
 
@@ -65,7 +70,7 @@ async function getPodStatuses(releaseName: string): Promise<PodStatus[]> {
       "--namespace", config.helm.namespace,
       "-l", `app.kubernetes.io/instance=${releaseName}`,
       "-o", "json",
-    ]);
+    ], { timeout: KUBECTL_TIMEOUT_MS });
     const data = JSON.parse(stdout);
     return (data.items as KubePod[]).map((pod) => {
       const cs = pod.status.containerStatuses?.[0];
@@ -90,7 +95,7 @@ async function getPassword(releaseName: string): Promise<string> {
       "get", "secret", `${releaseName}-auth`,
       "--namespace", config.helm.namespace,
       "-o", "jsonpath={.data.password}",
-    ]);
+    ], { timeout: KUBECTL_TIMEOUT_MS });
     return stdout ? Buffer.from(stdout, "base64").toString() : "";
   } catch {
     return "";
@@ -103,7 +108,7 @@ async function getRouteUrl(releaseName: string): Promise<string> {
       "get", "route", releaseName,
       "--namespace", config.helm.namespace,
       "-o", "jsonpath={.spec.host}",
-    ]);
+    ], { timeout: KUBECTL_TIMEOUT_MS });
     return stdout ? `https://${stdout}` : "";
   } catch {
     return "";
