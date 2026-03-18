@@ -10,6 +10,19 @@ const MAX_SUFFIX_LENGTH = 30;
 /** Maximum duration for a log streaming SSE connection (30 minutes). */
 const LOG_STREAM_TIMEOUT_MS = 30 * 60 * 1000;
 
+/** Return a safe error message that does not leak internal details. */
+function safeErrorMessage(err: unknown): string {
+  if (!(err instanceof Error)) return "Internal server error";
+  const msg = err.message;
+  // Only expose messages that look like user-facing Helm errors
+  // (e.g. "cannot re-use a name that is still in use", "release not found").
+  // Suppress messages containing filesystem paths or stack traces.
+  if (/\/|\\|node_modules|ENOENT|EACCES|spawn/.test(msg)) {
+    return "Internal server error";
+  }
+  return msg;
+}
+
 /** Return the expected release name prefix for a given user. */
 function userPrefix(username: string): string {
   return `${config.helm.releasePrefix}${username.toLowerCase()}`;
@@ -34,8 +47,8 @@ router.get("/instances", async (req, res) => {
     const owned = instances.filter((i) => isOwnedBy(i.name, user.username));
     res.json(owned);
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    res.status(500).json({ error: message });
+    console.error("GET /api/instances failed:", err);
+    res.status(500).json({ error: safeErrorMessage(err) });
   }
 });
 
@@ -54,8 +67,8 @@ router.post("/instances", async (req, res) => {
     const instance = await helm.createInstance(user.username, suffix);
     res.status(201).json(instance);
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    res.status(500).json({ error: message });
+    console.error("POST /api/instances failed:", err);
+    res.status(500).json({ error: safeErrorMessage(err) });
   }
 });
 
@@ -74,8 +87,8 @@ router.delete("/instances/:name", async (req, res) => {
     await helm.deleteInstance(name);
     res.json({ ok: true });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    res.status(500).json({ error: message });
+    console.error("DELETE /api/instances failed:", err);
+    res.status(500).json({ error: safeErrorMessage(err) });
   }
 });
 
