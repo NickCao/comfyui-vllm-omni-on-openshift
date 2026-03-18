@@ -1,19 +1,22 @@
 image:
-  repository: vllm/vllm-openai
-  tag: latest
+  repository: vllm/vllm-openai-cpu
+  tag: latest-x86_64
 
 model:
   name: Qwen/Qwen3-0.6B
+  extraArgs: []
 
 resources:
   requests:
-    cpu: "2"
-    memory: 4Gi
-    nvidia.com/gpu: "1"
-  limits:
     cpu: "4"
-    memory: 8Gi
-    nvidia.com/gpu: "1"
+    memory: 16Gi
+  limits:
+    cpu: "8"
+    memory: 16Gi
+
+extraEnv:
+  - name: VLLM_CPU_KVCACHE_SPACE
+    value: "8"
 
 modelCache:
   size: 10Gi

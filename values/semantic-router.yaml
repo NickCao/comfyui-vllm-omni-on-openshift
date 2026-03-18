@@ -1,5 +1,7 @@
 # Semantic Router configuration using the canonical v0.3 contract.
 # See: https://vllm-semantic-router.com/docs/installation/configuration#helm
+persistence:
+  storageClassName: ""
 config:
   version: v0.3
   listeners:

@@ -9,6 +9,8 @@ metadata:
 spec:
   predictor:
     minReplicas: {{ .Values.inferenceService.minReplicas }}
+    deploymentStrategy:
+      type: Recreate
     {{- if eq .Values.inferenceService.deploymentMode "Serverless" }}
     maxReplicas: {{ .Values.inferenceService.maxReplicas }}
     {{- end }}

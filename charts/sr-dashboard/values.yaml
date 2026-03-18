@@ -1,0 +1,26 @@
+image:
+  # Pinned to the commit before PR #1494 added the auth/bootstrap flow,
+  # which requires CGO (go-sqlite3) but the image is built with CGO_ENABLED=0.
+  repository: ghcr.io/vllm-project/semantic-router/dashboard
+  tag: e572a65b8ea07425de2b5390fc572a86635a3fa8-linux-amd64
+  pullPolicy: IfNotPresent
+
+# Name of the semantic-router ConfigMap containing config.yaml.
+# Must exist in the same namespace.
+routerConfigMap: semantic-router-config
+
+# In-cluster service URLs (no namespace suffix needed when co-located).
+router:
+  apiURL: http://semantic-router:8080
+  metricsURL: http://semantic-router-metrics:9190/metrics
+
+route:
+  enabled: false
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

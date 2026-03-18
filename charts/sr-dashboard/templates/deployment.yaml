@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "sr-dashboard.fullname" . }}
+  labels:
+    {{- include "sr-dashboard.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "sr-dashboard.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "sr-dashboard.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: dashboard
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # Override entrypoint to skip su-exec (incompatible with OpenShift SCC).
+          command: ["/app/dashboard-backend"]
+          args:
+            - "-port=8700"
+            - "-static=/app/frontend"
+            - "-config=/app/config/config.yaml"
+          env:
+            - name: TARGET_ROUTER_API_URL
+              value: {{ .Values.router.apiURL | quote }}
+            - name: TARGET_ROUTER_METRICS_URL
+              value: {{ .Values.router.metricsURL | quote }}
+            - name: ROUTER_CONFIG_PATH
+              value: /app/config/config.yaml
+          ports:
+            - name: http
+              containerPort: 8700
+              protocol: TCP
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8700
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8700
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ .Values.routerConfigMap }}
