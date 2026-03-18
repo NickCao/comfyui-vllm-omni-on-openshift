@@ -7,15 +7,29 @@ import { config } from "../config.js";
 
 const RELEASE_NAME_RE = /^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/;
 
+/** Return the expected release name prefix for a given user. */
+function userPrefix(username: string): string {
+  return `${config.helm.releasePrefix}${username.toLowerCase()}`;
+}
+
+/** Check whether a release name belongs to the given user. */
+export function isOwnedBy(releaseName: string, username: string): boolean {
+  const prefix = userPrefix(username);
+  // Exact match (no suffix) or prefix followed by a hyphen (suffix separator)
+  return releaseName === prefix || releaseName.startsWith(`${prefix}-`);
+}
+
 const router = Router();
 
 router.use(requireAuth);
 router.use(requireJson);
 
-router.get("/instances", async (_req, res) => {
+router.get("/instances", async (req, res) => {
   try {
+    const user = req.user as { username: string };
     const instances = await helm.listInstances();
-    res.json(instances);
+    const owned = instances.filter((i) => isOwnedBy(i.name, user.username));
+    res.json(owned);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     res.status(500).json({ error: message });
@@ -40,10 +54,14 @@ router.post("/instances", async (req, res) => {
 
 router.delete("/instances/:name", async (req, res) => {
   try {
+    const user = req.user as { username: string };
     const name = req.params.name;
-    // Validate the release name format and ensure it belongs to a comfyui instance
     if (!RELEASE_NAME_RE.test(name) || !name.startsWith(config.helm.releasePrefix)) {
       res.status(400).json({ error: "Invalid instance name" });
+      return;
+    }
+    if (!isOwnedBy(name, user.username)) {
+      res.status(403).json({ error: "You can only delete your own instances" });
       return;
     }
     await helm.deleteInstance(name);
@@ -55,9 +73,14 @@ router.delete("/instances/:name", async (req, res) => {
 });
 
 router.get("/instances/:name/logs", (req, res) => {
+  const user = req.user as { username: string };
   const name = req.params.name;
   if (!RELEASE_NAME_RE.test(name) || !name.startsWith(config.helm.releasePrefix)) {
     res.status(400).json({ error: "Invalid instance name" });
+    return;
+  }
+  if (!isOwnedBy(name, user.username)) {
+    res.status(403).json({ error: "You can only view logs for your own instances" });
     return;
   }
 

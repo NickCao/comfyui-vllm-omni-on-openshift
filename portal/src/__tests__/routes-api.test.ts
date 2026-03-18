@@ -27,7 +27,7 @@ vi.mock("../services/helm.js", () => ({
 }));
 
 import * as helm from "../services/helm.js";
-import apiRoutes from "../routes/api.js";
+import apiRoutes, { isOwnedBy } from "../routes/api.js";
 
 function mockReq(overrides: Record<string, unknown> = {}) {
   return {
@@ -72,8 +72,8 @@ describe("GET /api/instances", () => {
     vi.clearAllMocks();
   });
 
-  it("should return instances from helm service", async () => {
-    const mockInstances = [
+  it("should return only the current user's instances", async () => {
+    const allInstances = [
       {
         name: "comfyui-alice",
         username: "alice",
@@ -83,16 +83,36 @@ describe("GET /api/instances", () => {
         password: "abc123",
         pods: [],
       },
+      {
+        name: "comfyui-bob",
+        username: "bob",
+        status: "deployed",
+        updated: "2026-01-01",
+        routeUrl: "https://comfyui-bob.example.com",
+        password: "def456",
+        pods: [],
+      },
+      {
+        name: "comfyui-alice-dev",
+        username: "alice",
+        status: "deployed",
+        updated: "2026-01-01",
+        routeUrl: "",
+        password: "ghi789",
+        pods: [],
+      },
     ];
-    vi.mocked(helm.listInstances).mockResolvedValue(mockInstances);
+    vi.mocked(helm.listInstances).mockResolvedValue(allInstances);
 
     const handler = getRouteHandler(apiRoutes, "get", "/instances");
-    const req = mockReq();
+    const req = mockReq({ user: { username: "alice" } });
     const res = mockRes();
     await handler(req, res);
 
     expect(helm.listInstances).toHaveBeenCalled();
-    expect(res.json).toHaveBeenCalledWith(mockInstances);
+    const returned = res.json.mock.calls[0][0];
+    expect(returned).toHaveLength(2);
+    expect(returned.every((i: any) => i.name.startsWith("comfyui-alice"))).toBe(true);
   });
 
   it("should return 500 when helm service throws", async () => {
@@ -231,6 +251,35 @@ describe("DELETE /api/instances/:name", () => {
     expect(res.status).toHaveBeenCalledWith(400);
   });
 
+  it("should reject deleting another user's instance with 403", async () => {
+    const handler = getRouteHandler(apiRoutes, "delete", "/instances/:name");
+    const req = mockReq({
+      params: { name: "comfyui-bob" },
+      user: { username: "alice" },
+    });
+    const res = mockRes();
+    await handler(req, res);
+
+    expect(helm.deleteInstance).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith({ error: "You can only delete your own instances" });
+  });
+
+  it("should allow deleting own instance with suffix", async () => {
+    vi.mocked(helm.deleteInstance).mockResolvedValue(undefined);
+
+    const handler = getRouteHandler(apiRoutes, "delete", "/instances/:name");
+    const req = mockReq({
+      params: { name: "comfyui-alice-dev" },
+      user: { username: "alice" },
+    });
+    const res = mockRes();
+    await handler(req, res);
+
+    expect(helm.deleteInstance).toHaveBeenCalledWith("comfyui-alice-dev");
+    expect(res.json).toHaveBeenCalledWith({ ok: true });
+  });
+
   it("should return 500 when helm service throws", async () => {
     vi.mocked(helm.deleteInstance).mockRejectedValue(
       new Error("not found")
@@ -280,4 +329,32 @@ describe("release name validation regex", () => {
   it("should reject underscores", () => testSuffix("my_test", false));
   it("should reject names ending with hyphen", () => testSuffix("test-", false));
   it("should reject spaces", () => testSuffix("my test", false));
+});
+
+describe("isOwnedBy", () => {
+  it("should match exact release name (no suffix)", () => {
+    expect(isOwnedBy("comfyui-alice", "alice")).toBe(true);
+  });
+
+  it("should match release name with suffix", () => {
+    expect(isOwnedBy("comfyui-alice-dev", "alice")).toBe(true);
+  });
+
+  it("should be case-insensitive for username", () => {
+    expect(isOwnedBy("comfyui-alice", "Alice")).toBe(true);
+  });
+
+  it("should not match another user's instance", () => {
+    expect(isOwnedBy("comfyui-bob", "alice")).toBe(false);
+  });
+
+  it("should not match partial username overlap", () => {
+    // comfyui-ali should NOT be owned by alice
+    expect(isOwnedBy("comfyui-ali", "alice")).toBe(false);
+  });
+
+  it("should not match when username is a prefix of another", () => {
+    // comfyui-alicex should NOT be owned by alice
+    expect(isOwnedBy("comfyui-alicex", "alice")).toBe(false);
+  });
 });
