@@ -1,0 +1,12 @@
+config:
+  model_list:
+    - model_name: Tongyi-MAI/Z-Image-Turbo
+      litellm_params:
+        model: openai/Tongyi-MAI/Z-Image-Turbo
+        api_base: http://vllm-omni-z-image-turbo-predictor:8080/v1
+        api_key: none
+    - model_name: Qwen/Qwen3-0.6B
+      litellm_params:
+        model: openai/Qwen/Qwen3-0.6B
+        api_base: http://vllm-qwen3-06b-vllm-omni-predictor:8080/v1
+        api_key: none

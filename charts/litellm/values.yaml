@@ -1,0 +1,14 @@
+image: docker.litellm.ai/berriai/litellm:main-stable
+
+# LiteLLM proxy config inlined into a ConfigMap.
+# See: https://docs.litellm.ai/docs/proxy/configs
+config:
+  model_list: []
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi

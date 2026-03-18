@@ -12,7 +12,7 @@ from typing import Dict, List
 from urllib.request import Request, urlopen
 from urllib.error import URLError
 
-_DEFAULT_BASE_URL = "http://semantic-router:8080/v1"
+_DEFAULT_BASE_URL = "http://litellm:4000/v1"
 
 
 def discover() -> Dict[str, str]:

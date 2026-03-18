@@ -1,5 +1,0 @@
-apiVersion: v2
-name: sr-dashboard
-description: Semantic Router Dashboard for vLLM
-version: 0.1.0
-appVersion: latest

@@ -17,12 +17,8 @@ releases:
     values:
       - values/portal.yaml
 
-  - name: semantic-router
+  - name: litellm
     namespace: comfyui-vllm-omni
-    chart: ./semantic-router/deploy/helm/semantic-router
+    chart: ./charts/litellm
     values:
-      - values/semantic-router.yaml
-
-  - name: sr-dashboard
-    namespace: comfyui-vllm-omni
-    chart: ./charts/sr-dashboard
+      - values/litellm.yaml

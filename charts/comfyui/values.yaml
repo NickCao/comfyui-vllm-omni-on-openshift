@@ -60,4 +60,4 @@ auth:
 # discovery and API requests.
 extraEnv:
   - name: VLLM_API_BASE_URL
-    value: "http://semantic-router:8080/v1"
+    value: "http://litellm:4000/v1"
