@@ -148,11 +148,13 @@ tests:
   - it: should set default resource requests and limits
     asserts:
       - equal:
-          path: spec.predictor.containers[0].resources.requests["nvidia.com/gpu"]
-          value: "1"
+          path: spec.predictor.containers[0].resources.requests.cpu
+          value: "4"
       - equal:
-          path: spec.predictor.containers[0].resources.limits["nvidia.com/gpu"]
-          value: "1"
+          path: spec.predictor.containers[0].resources.requests.memory
+          value: 16Gi
+      - notExists:
+          path: spec.predictor.containers[0].resources.requests["nvidia.com/gpu"]
 
   - it: should configure startup probe with generous timeout for model download
     asserts:
