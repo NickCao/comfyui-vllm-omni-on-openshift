@@ -23,6 +23,10 @@ spec:
               containerPort: 4000
               protocol: TCP
           env:
+            - name: UI_USERNAME
+              value: {{ .Values.ui.username | quote }}
+            - name: UI_PASSWORD
+              value: {{ .Values.ui.password | quote }}
             - name: LITELLM_LOCAL_MODEL_COST_MAP
               value: "True"
           volumeMounts:

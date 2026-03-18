@@ -1,5 +1,12 @@
 image: docker.litellm.ai/berriai/litellm:main-stable
 
+# Admin UI credentials (accessible at /ui).
+# Note: LITELLM_MASTER_KEY is intentionally omitted so the API is open
+# to in-cluster callers (ComfyUI). The UI login uses these credentials.
+ui:
+  username: admin
+  password: admin
+
 # LiteLLM proxy config inlined into a ConfigMap.
 # See: https://docs.litellm.ai/docs/proxy/configs
 config:
