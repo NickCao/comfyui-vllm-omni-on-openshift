@@ -16,6 +16,10 @@ vi.mock("../middleware/auth.js", () => ({
   requireAuth: vi.fn((_req: any, _res: any, next: any) => next()),
 }));
 
+vi.mock("../middleware/require-json.js", () => ({
+  requireJson: vi.fn((_req: any, _res: any, next: any) => next()),
+}));
+
 vi.mock("../services/helm.js", () => ({
   listInstances: vi.fn(),
   createInstance: vi.fn(),

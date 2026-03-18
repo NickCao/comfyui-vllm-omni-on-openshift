@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { spawn } from "node:child_process";
 import { requireAuth } from "../middleware/auth.js";
+import { requireJson } from "../middleware/require-json.js";
 import * as helm from "../services/helm.js";
 import { config } from "../config.js";
 
@@ -9,6 +10,7 @@ const RELEASE_NAME_RE = /^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/;
 const router = Router();
 
 router.use(requireAuth);
+router.use(requireJson);
 
 router.get("/instances", async (_req, res) => {
   try {

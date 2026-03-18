@@ -138,7 +138,10 @@ export function App() {
 
   async function deleteInstance(name: string) {
     setError("");
-    const res = await fetch(`/api/instances/${name}`, { method: "DELETE" });
+    const res = await fetch(`/api/instances/${name}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+    });
     if (res.ok) {
       refreshInstances();
     } else {
