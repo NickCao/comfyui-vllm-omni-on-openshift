@@ -4,19 +4,32 @@ Discover vLLM model instances for ComfyUI.
 Queries the endpoint specified by the VLLM_API_BASE_URL environment
 variable (typically a LiteLLM Proxy) for available models via its
 /v1/models endpoint.
+
+Results are cached with a configurable TTL (default 300 s).  If the
+upstream is unreachable the cache returns stale data when available,
+and retries on the next call after the TTL expires.
 """
 
 import json
 import os
+import time
 from typing import Dict, List, Optional
 from urllib.request import Request, urlopen
 from urllib.error import URLError
 
 _DEFAULT_BASE_URL = "http://litellm:4000/v1"
+_DEFAULT_CACHE_TTL = 300  # seconds
 
 
 def _get_api_key() -> Optional[str]:
     return os.environ.get("VLLM_API_KEY")
+
+
+def _get_cache_ttl() -> float:
+    try:
+        return float(os.environ.get("VLLM_DISCOVERY_CACHE_TTL", _DEFAULT_CACHE_TTL))
+    except ValueError:
+        return float(_DEFAULT_CACHE_TTL)
 
 
 def discover() -> Dict[str, str]:
@@ -55,12 +68,26 @@ def discover() -> Dict[str, str]:
 
 
 _cache: Dict[str, str] = {}
+_cache_time: float = 0.0
 
 
 def get_instances() -> Dict[str, str]:
-    global _cache
-    if not _cache:
-        _cache = discover()
+    """Return discovered models, refreshing when the TTL has expired."""
+    global _cache, _cache_time
+    now = time.monotonic()
+    if _cache and (now - _cache_time) < _get_cache_ttl():
+        return _cache
+
+    result = discover()
+    if result:
+        _cache = result
+        _cache_time = now
+    elif not _cache:
+        # No cached data and discovery failed — record the attempt time
+        # so we don't hammer the endpoint on every call, but retry after
+        # the TTL expires.
+        _cache_time = now
+
     return _cache
 
 
