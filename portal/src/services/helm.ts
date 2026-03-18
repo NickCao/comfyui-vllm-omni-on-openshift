@@ -48,19 +48,51 @@ async function helm(...args: string[]): Promise<string> {
   return stdout;
 }
 
+interface KubeContainerStatus {
+  name: string;
+  ready: boolean;
+  restartCount: number;
+  state: {
+    waiting?: { reason: string; message?: string };
+    terminated?: { reason: string };
+  };
+}
+
 interface KubePod {
   metadata: { name: string };
   status: {
     phase: string;
-    containerStatuses?: {
-      ready: boolean;
-      restartCount: number;
-      state: {
-        waiting?: { reason: string; message?: string };
-        terminated?: { reason: string };
-      };
-    }[];
+    containerStatuses?: KubeContainerStatus[];
   };
+}
+
+/**
+ * Summarise the status of a pod by inspecting ALL container statuses.
+ *
+ * Reports the "worst" container state: any waiting/terminated reason
+ * takes precedence over a healthy running state, and the total restart
+ * count is the sum across all containers.
+ */
+function summarisePod(pod: KubePod): PodStatus {
+  const statuses = pod.status.containerStatuses ?? [];
+  let phase = pod.status.phase;
+  let ready = statuses.length > 0 && statuses.every((cs) => cs.ready);
+  let restarts = 0;
+  let message = "";
+
+  for (const cs of statuses) {
+    restarts += cs.restartCount;
+    const waiting = cs.state?.waiting;
+    const terminated = cs.state?.terminated;
+    if (waiting?.reason) {
+      phase = waiting.reason;
+      message = waiting.message ?? "";
+    } else if (terminated?.reason) {
+      phase = terminated.reason;
+    }
+  }
+
+  return { name: pod.metadata.name, phase, ready, restarts, message };
 }
 
 async function getPodStatuses(releaseName: string): Promise<PodStatus[]> {
@@ -72,18 +104,7 @@ async function getPodStatuses(releaseName: string): Promise<PodStatus[]> {
       "-o", "json",
     ], { timeout: KUBECTL_TIMEOUT_MS });
     const data = JSON.parse(stdout);
-    return (data.items as KubePod[]).map((pod) => {
-      const cs = pod.status.containerStatuses?.[0];
-      const waiting = cs?.state?.waiting;
-      const terminated = cs?.state?.terminated;
-      return {
-        name: pod.metadata.name,
-        phase: waiting?.reason ?? terminated?.reason ?? pod.status.phase,
-        ready: cs?.ready ?? false,
-        restarts: cs?.restartCount ?? 0,
-        message: waiting?.message ?? "",
-      };
-    });
+    return (data.items as KubePod[]).map(summarisePod);
   } catch {
     return [];
   }

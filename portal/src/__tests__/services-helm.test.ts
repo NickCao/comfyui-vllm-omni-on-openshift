@@ -383,4 +383,65 @@ describe("pod status parsing", () => {
     expect(pod.ready).toBe(false);
     expect(pod.restarts).toBe(0);
   });
+
+  it("should aggregate status across multiple containers", async () => {
+    const helmListOutput = JSON.stringify([
+      {
+        name: "comfyui-alice",
+        namespace: "test-ns",
+        revision: "1",
+        updated: "2026-01-01",
+        status: "deployed",
+        chart: "comfyui-0.1.0",
+        app_version: "0.1.0",
+      },
+    ]);
+
+    const podJson = JSON.stringify({
+      items: [
+        {
+          metadata: { name: "comfyui-alice-pod1" },
+          status: {
+            phase: "Running",
+            containerStatuses: [
+              {
+                name: "comfyui",
+                ready: true,
+                restartCount: 1,
+                state: {},
+              },
+              {
+                name: "nginx",
+                ready: false,
+                restartCount: 3,
+                state: {
+                  waiting: {
+                    reason: "CrashLoopBackOff",
+                    message: "back-off restarting",
+                  },
+                },
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    mockExecMulti([
+      { cmd: "helm", match: ["list"], stdout: helmListOutput },
+      { cmd: "kubectl", match: ["get", "pods"], stdout: podJson },
+      { cmd: "kubectl", match: ["get", "route"], stdout: "" },
+      { cmd: "kubectl", match: ["get", "secret"], stdout: "" },
+    ]);
+
+    const instances = await listInstances();
+    const pod = instances[0].pods[0];
+
+    // Should report the worst state (nginx sidecar crash)
+    expect(pod.phase).toBe("CrashLoopBackOff");
+    expect(pod.ready).toBe(false);
+    // Total restarts across both containers
+    expect(pod.restarts).toBe(4);
+    expect(pod.message).toBe("back-off restarting");
+  });
 });
